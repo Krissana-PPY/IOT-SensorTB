@@ -24,9 +24,9 @@ while True:
         "d": "distance",
         "r": "reverse",
         "f": "forward",
-        "s": "setmpu",
-        "ss": "setmpu1",
-        "sss": "setmpu2"
+        "1p": "setup1p",
+        "2p": "setup2p",
+        "3p": "setup3p"
 
     }
 
