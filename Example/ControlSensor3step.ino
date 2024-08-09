@@ -10,7 +10,7 @@
 #include <math.h>
 
 // MPU6050 settings
-MPU6050 mpu;nmmmmmmm
+MPU6050 mpu;
 bool dmpReady = false;
 uint8_t mpuIntStatus;
 uint8_t devStatus;
