@@ -10,7 +10,7 @@
 #include <math.h>
 
 // MPU6050 settings
-MPU6050 mpu;nmmmmmmm
+MPU6050 mpu;
 bool dmpReady = false;
 uint8_t mpuIntStatus;
 uint8_t devStatus;
@@ -36,9 +36,7 @@ PubSubClient client(espClient);
 // MQTT topics
 const char* reverse_topic = "reverse";
 const char* forward_topic = "forward";
-const char* setup1p_topic = "setup1p";
-const char* setup2p_topic = "setup2p";
-const char* setup3p_topic = "setup3p";
+const char* setmpu_topic = "setmpu";
 
 // Stepper motor settings
 #define PUL_PIN 25  // Pulse pin
@@ -48,13 +46,15 @@ const char* setup3p_topic = "setup3p";
 // Other settings
 #define RXD2 16
 #define TXD2 17
+#define STEP_ANGLE 0.1125 // Angle per step in degrees
 bool blinkState = false;
 float rotation;
 float facing_up;
 String stringOne;
 float distanceOfnumber;
+float distanceOfmotor;
 int steps;
-//float step_fraction = 0.0;
+
 
 // Function declarations
 void mpu_setup();
@@ -65,6 +65,8 @@ void reconnect_mqtt();
 void callback(char* topic, byte* payload, unsigned int length);
 void control_stepper_motor(float distance);
 float parse_distance(const String &str);
+void stepMotor(int steps);
+void stepMotorWithLaserMeasurement(int steps);
 
 void setup() {
   Serial.begin(115200);
@@ -119,73 +121,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
     serializeJson(doc, payload);
     client.publish("next", payload);
 
-  }  else if (String(topic) == setup1p_topic) {
+  }  else if (String(topic) == setmpu_topic) {
     mpu_setup();
-    Serial2.write("O");
     Serial2.write("D");
-//    Serial.println(distanceOfnumber);
-    digitalWrite(ENA_PIN, LOW);
-    digitalWrite(DIR_PIN, HIGH); 
-    delay(1000);
-//    Serial.println(steps);
-    stepMotor(steps);
-    stepMotor(steps);
-    delay(1000);
+    delay(500);
     laser_measure();
-    laser_measure1();
-    digitalWrite(DIR_PIN, LOW); 
-    stepMotor(steps);
-    stepMotor(steps);
-    delay(1000);
-//    step_fraction = 0.0;
-  } else if (String(topic) == setup2p_topic) {
-    mpu_setup();
+    control_stepper_motor(distanceOfmotor);
+    digitalWrite(ENA_PIN, LOW);
+    digitalWrite(DIR_PIN, HIGH);
+    stepMotorconvert(steps);
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorWithLaserMeasurement(steps);
+    client.publish("finish","");
     Serial2.write("O");
-    Serial2.write("D");
-    laser_measure();
-    laser_measure1();
-//    Serial.println(distanceOfnumber);
-    control_stepper_motor(distanceOfnumber);
-    digitalWrite(ENA_PIN, LOW);
-    digitalWrite(DIR_PIN, HIGH); 
-    delay(1000);
-//    Serial.println(steps);
-    stepMotor(steps);
-    delay(1000);
-    laser_measure();
-    laser_measure1();
-    delay(1000);
-    digitalWrite(DIR_PIN, LOW); 
-    stepMotor(steps);
-    delay(1000);
-//    step_fraction = 0.0;
-  } else if (String(topic) == setup3p_topic) {
-    mpu_setup();
-    Serial2.write("O");
-    Serial2.write("D");
-    laser_measure();
-    laser_measure1();
-//    Serial.println(distanceOfnumber);
-    control_stepper_motor(distanceOfnumber);
-    digitalWrite(ENA_PIN, LOW);
-    digitalWrite(DIR_PIN, HIGH); 
-    delay(1000);
-//    Serial.println(steps);
-    stepMotor(steps);
-    delay(1000);
-    laser_measure();
-    laser_measure1();
-    delay(1000);
-    stepMotor(steps);
-    delay(1000);
-    laser_measure();
-    laser_measure1();
-    delay(1000);
-    digitalWrite(DIR_PIN, LOW); 
-    stepMotor(steps);
-    stepMotor(steps);
-    delay(1000);
-//    step_fraction = 0.0;
   }
 }
 void mpu_setup() {
@@ -213,20 +161,14 @@ void laser_measure() {
   mpu_measure();
   Serial2.write("D");
   delay(500);
-
   while (Serial2.available()) {
     char data = Serial2.read();
     stringOne += data;
   }
-  Serial.print(stringOne);
-  StaticJsonDocument<200> doc;
-  doc["rotation"] = rotation;
-  doc["facing_up"] = facing_up;
-  doc["distance"] = stringOne;
-  char payload[200];
-  serializeJson(doc, payload);
-  distanceOfnumber = parse_distance(stringOne);
-//  doc["angle_rad"] = atan(0.8 / distanceOfnumber);
+//  Serial.print(stringOne);
+//  Serial.printf("rotation %.2f\n", rotation);
+//  Serial.printf("facing %.2f\n", facing_up);
+  distanceOfmotor = parse_distance(stringOne); // Convert stringOne to float distance
   stringOne = "";
 }
 
@@ -234,21 +176,24 @@ void laser_measure1() {
   mpu_measure();
   Serial2.write("D");
   delay(500);
-
   while (Serial2.available()) {
     char data = Serial2.read();
     stringOne += data;
   }
   Serial.print(stringOne);
+  distanceOfnumber = parse_distance(stringOne); // Convert stringOne to float distance
   StaticJsonDocument<200> doc;
-  doc["rotation"] = rotation;
-  doc["facing_up"] = facing_up;
-  doc["distance"] = stringOne;
+  doc["rotation"] = abs(rotation);
+  doc["facing_up"] = abs(facing_up);
+  doc["distance"] = distanceOfnumber;
   char payload[200];
   serializeJson(doc, payload);
   client.publish(mqtt_topic, payload);
-  distanceOfnumber = parse_distance(stringOne); // Convert stringOne to float distance
-//  doc["angle_rad"] = atan(0.8 / distanceOfnumber);
+  
+//  Serial.printf("rotation %.2f\n", rotation);
+//  Serial.printf("facing %.2f\n", facing_up);
+//  Serial.print("distance");
+//  Serial.println(distanceOfnumber);
   stringOne = "";
 }
 
@@ -270,9 +215,7 @@ void reconnect_mqtt() {
       Serial.println("Connected to MQTT");
       client.subscribe(reverse_topic);
       client.subscribe(forward_topic);
-      client.subscribe(setup1p_topic);
-      client.subscribe(setup2p_topic);
-      client.subscribe(setup3p_topic);
+      client.subscribe(setmpu_topic);
     } else {
       Serial.print("Failed to connect to MQTT. State: ");
       Serial.println(client.state());
@@ -283,18 +226,9 @@ void reconnect_mqtt() {
 
 void control_stepper_motor(float distanceOfnumber) {
   if (distanceOfnumber > 0) {
-//    Serial.println(distanceOfnumber);
     float angle_rad = atan(80.0 / (distanceOfnumber * 100.0));
-//    Serial.println(angle_rad);
     float angle_deg = angle_rad * 180 / M_PI;
-//    Serial.println(angle_deg);
-    angle_deg = floor(angle_deg * 10.0);
-//    Serial.println(angle_deg); // Round to 1 decimal place
-//    float total_steps = angle_deg / 0.1125 + step_fraction;
-//    steps = (int)total_steps;
-//    step_fraction = total_steps - steps;
-    steps = round(angle_deg * 10) / 10.0;
-//    Serial.println(steps);
+    steps = floor(angle_deg / STEP_ANGLE); // Calculate the number of steps needed
   }
 }
 
@@ -302,15 +236,31 @@ float parse_distance(const String &str) {
   int start = str.indexOf(":") + 1;
   int end = str.indexOf("m");
   String distanceStr = str.substring(start, end);
-//  Serial.println(distanceStr);
   return distanceStr.toFloat();
 }
 
-void stepMotor(int steps) {
+void stepMotorconvert (int steps) {
   for (int i = 0; i < steps; i++) {
     digitalWrite(PUL_PIN, HIGH);
-    delayMicroseconds(500);
+    delayMicroseconds(1000);
     digitalWrite(PUL_PIN, LOW);
-    delayMicroseconds(500);
+    delayMicroseconds(1000);
+  }
+}
+
+void stepMotorWithLaserMeasurement(int steps) {
+  int delayPerStep = (5000000) / (2 * steps); // Delay per step in microseconds for 5 seconds total
+  int stepslaser = (1500000) / (2 * delayPerStep); // 1.5 seconds in milliseconds
+  int stepscheck = stepslaser;
+
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(PUL_PIN, HIGH);
+    delayMicroseconds(delayPerStep);
+    digitalWrite(PUL_PIN, LOW);
+    delayMicroseconds(delayPerStep);
+    if (i == stepscheck) {
+      laser_measure1();
+      stepscheck += stepslaser;
+    }
   }
 }
