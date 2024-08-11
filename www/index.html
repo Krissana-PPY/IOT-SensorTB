@@ -46,7 +46,7 @@
       color: #333;
     }
 
-    #pallate_v {
+    #pallet_v {
       font-size: 30px;;
       font-weight: bold;
       color: #00224D;
@@ -116,7 +116,7 @@
         <p><span id="row_v">Row</span></p>
       </div>
       <div class="valueDiv">
-        <p><span id="pallate_v">pallate</span></p>
+        <p><span id="pallet_v">pallet</span></p>
       </div>
     </div>
     <p id="state" class="state">State: wait for connection...</p>
@@ -140,12 +140,12 @@
     });
 
     //If received message from server
-    socket.on('send_pallate', function(data) {
-      update_palate(data.pallate_v);
+    socket.on('send_pallet', function(data) {
+      update_palate(data.pallet_v);
     });
 
-    function update_palate(pallate_v) {
-      $('#pallate_v').text(pallate_v);
+    function update_palate(pallet_v) {
+      $('#pallet_v').text(pallet_v);
     }
 
     socket.on('send_point_1', function(data) {
@@ -189,11 +189,11 @@
     }
 
     socket.on('set_zero', function(data) {
-      updateSensorData(data.pallate_v ,data.point);
+      updateSensorData(data.pallet_v ,data.point);
     });
 
-    function updateSensorData(pallate_v , point) {
-      $('#pallate_v').text(pallate_v);
+    function updateSensorData(pallet_v , point) {
+      $('#pallet_v').text(pallet_v);
       $('#point_1').text(point + ' PL.');
       $('#point_2').text(point + ' PL.');
       $('#point_3').text(point + ' PL.');

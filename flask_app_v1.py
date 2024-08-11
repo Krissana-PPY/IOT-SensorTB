@@ -10,14 +10,14 @@ import mysql.connector
 distance = []
 angle_x = []
 angle_y = []
-each_pallate = []
+each_pallet = []
 distace_true = []
-pallate_NO = 1
+pallet_NO = 1
 count = 0
 MAX_RANGE = 15  # meters
 
-# List of pallates identifiers
-pallates = [f"AA{i:03}" for i in range(1, 33)]
+# List of pallets identifiers
+pallets = [f"AA{i:03}" for i in range(1, 33)]
 
 def create_app():
     # Create a Flask application
@@ -46,17 +46,17 @@ topic = "+"
 mqtt = Mqtt(app, connect_async=True)
 
 # Helper Functions to structure data for sending to the web interface
-def send_pallate_to_web(np):
-    return {"pallate_v": np} # All pallate
+def send_pallet_to_web(np):
+    return {"pallet_v": np} # All pallet
 
 def send_point_to_web(dt):
-    return {'point': dt} # EACH_pallate
+    return {'point': dt} # EACH_pallet
 
 def send_all_zero():
-    return {'pallate_v': 0, 'point': 0} # All cls
+    return {'pallet_v': 0, 'point': 0} # All cls
 
 def send_point_zero():
-    return {'point': 0} # cls  EACH_PALLATE
+    return {'point': 0} # cls  EACH_pallet
 
 def send_c_row(row):
     return {'c_row_v': row} # Now Row ID
@@ -64,8 +64,8 @@ def send_c_row(row):
 def send_row(row):
     return {'row_v': row} # SS Row ID
 
-def show_pallate(index):
-    return pallates[index] # Row ID
+def show_pallet(index):
+    return pallets[index] # Row ID
 
 def clear_data(input_str):
     # Extracts numeric values from the input string
@@ -81,12 +81,12 @@ def collected_data(input_str):
     angle_y.append(float(data[1]))
     distance.append(float(data[2]))
 
-# Calculates the number of pallates based on the distance measure
-def cal_pallate(distance_measure):
-    pallate = math.floor((MAX_RANGE - distance_measure) / 1.215)
-    print(pallate)
-    each_pallate.append(pallate)
-    return pallate
+# Calculates the number of pallets based on the distance measure
+def cal_pallet(distance_measure):
+    pallet = math.floor((MAX_RANGE - distance_measure) / 1.215)
+    print(pallet)
+    each_pallet.append(pallet)
+    return pallet
 
 # Calculates the true distance using the distance and angle
 def cal_distacetrue (distance_measure, angle_y):
@@ -99,9 +99,9 @@ def calculate_average_distance():
         return sum(distace_true) / len(distace_true)
     return 0
 
-# Sums the number of pallates in the each_pallate list
-def sum_pallate():
-    return sum(math.floor(p) for p in each_pallate)
+# Sums the number of pallets in the each_pallet list
+def sum_pallet():
+    return sum(math.floor(p) for p in each_pallet)
 
 # MySQL Functions to interact with the database
 def get_db_connection():
@@ -117,7 +117,7 @@ def get_db_connection():
         print(f"Error: {err}")
         return None
 
-def send_EACH_PALLATE(row_name, pallate_no, distance, angle_x, angle_y):
+def send_EACH_PALLET(row_name, pallet_no, distance, angle_x, angle_y):
     try:
         connection = get_db_connection()
         if connection and connection.is_connected():
@@ -125,9 +125,9 @@ def send_EACH_PALLATE(row_name, pallate_no, distance, angle_x, angle_y):
             date = current_time.strftime("%Y-%m-%d")
             cur = connection.cursor()
             cur.execute("""
-                INSERT INTO ROW_EACH_PALLATE (ROW_ID, PALLATE_NO, DISTANCE, ANGLE_X, ANGLE_Y, UPDATE_DATE) 
+                INSERT INTO ROW_EACH_PALLET (ROW_ID, PALLET_NO, DISTANCE, ANGLE_X, ANGLE_Y, UPDATE_DATE) 
                 VALUES (%s, %s, %s, %s, %s, %s)
-                """, (row_name, pallate_no, distance, angle_x, angle_y, date))
+                """, (row_name, pallet_no, distance, angle_x, angle_y, date))
             connection.commit()
             print("Insert data")
             cur.close()
@@ -150,8 +150,8 @@ def send_DELETE(row_name):
             date = current_time.strftime("%Y-%m-%d")
 
             # Check existence before delete
-            cur.execute("DELETE FROM ROW_EACH_PALLATE WHERE ROW_ID = %s AND UPDATE_DATE = %s", (row_name, date))
-            cur.execute("DELETE FROM ROW_PALLATE WHERE ROW_ID = %s AND UPDATE_DATE = %s", (row_name, date))
+            cur.execute("DELETE FROM ROW_EACH_PALLET WHERE ROW_ID = %s AND UPDATE_DATE = %s", (row_name, date))
+            cur.execute("DELETE FROM ROW_PALLET WHERE ROW_ID = %s AND UPDATE_DATE = %s", (row_name, date))
             cur.execute("DELETE FROM STOCK WHERE ROW_ID = %s AND UPDATE_DATE = %s", (row_name, date))
             connection.commit()
 
@@ -166,7 +166,7 @@ def send_DELETE(row_name):
         if connection and connection.is_connected():
             connection.close()
 
-def send_STOCK(row_name, pallate):
+def send_STOCK(row_name, pallet):
     try:
         connection = get_db_connection()
         if connection and connection.is_connected():
@@ -174,9 +174,9 @@ def send_STOCK(row_name, pallate):
             date = current_time.strftime("%Y-%m-%d") 
             cur = connection.cursor()
             cur.execute("""
-                INSERT INTO STOCK (ROW_ID, PALLATE, UPDATE_DATE) 
+                INSERT INTO STOCK (ROW_ID, PALLET, UPDATE_DATE) 
                 VALUES (%s, %s, %s)
-                """, (row_name, pallate, date))
+                """, (row_name, pallet, date))
             connection.commit()
             print("Insert data")
             cur.close()
@@ -190,7 +190,7 @@ def send_STOCK(row_name, pallate):
         if connection and connection.is_connected():
             connection.close()
 
-def send_ROW_PALLATE(row_name, pallate_no, each_pallate):
+def send_ROW_PALLET(row_name, pallet_no, each_pallet):
     try:
         connection = get_db_connection()
         if connection and connection.is_connected():
@@ -198,9 +198,9 @@ def send_ROW_PALLATE(row_name, pallate_no, each_pallate):
             date = current_time.strftime("%Y-%m-%d")             
             cur = connection.cursor()
             cur.execute("""
-                INSERT INTO ROW_PALLATE (ROW_ID, PALLATE_NO, EACH_PALLATE, UPDATE_DATE ) 
+                INSERT INTO ROW_PALLET (ROW_ID, PALLET_NO, EACH_PALLET, UPDATE_DATE ) 
                 VALUES (%s, %s, %s, %s)
-                """, (row_name, pallate_no, each_pallate, date))
+                """, (row_name, pallet_no, each_pallet, date))
             connection.commit()
             print("Insert data")
             cur.close()
@@ -222,25 +222,25 @@ def handle_connect(client, userdata, flags, rc):
 
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
-    global count, pallate_NO
+    global count, pallet_NO
     msg = message.payload.decode()
     print(message.topic + " " + str(msg))
-    socketio.emit('send_c_row', send_c_row(show_pallate(count)), namespace='/')
+    socketio.emit('send_c_row', send_c_row(show_pallet(count)), namespace='/')
 
     if message.topic == "measure":
         # Collect data from the message payload
         collected_data(msg)
-        send_EACH_PALLATE(show_pallate(count), pallate_NO, distance[-1], angle_x[-1], angle_y[-1])
+        send_EACH_PALLET(show_pallet(count), pallet_NO, distance[-1], angle_x[-1], angle_y[-1])
         
     elif message.topic == "finish":
          # Calculate true distances and average distance
         for i in range(len(distance)):
             cal_distacetrue(distance[i], angle_y[i])
         average_distance = calculate_average_distance()
-        # Calculate number of pallates based on the average distance
-        cal_pallate(average_distance)    
-        send_point_to_web(each_pallate)
-        print("each_pallate = ", each_pallate)
+        # Calculate number of pallets based on the average distance
+        cal_pallet(average_distance)    
+        send_point_to_web(each_pallet)
+        print("each_pallet = ", each_pallet)
         point_events = {
             1: 'send_point_1',
             2: 'send_point_2',
@@ -249,47 +249,47 @@ def handle_mqtt_message(client, userdata, message):
             5: 'send_point_5'
         }
 
-        if len(each_pallate) in point_events:
-            socketio.emit(point_events[len(each_pallate)], send_point_to_web(each_pallate[-1]), namespace='/')
+        if len(each_pallet) in point_events:
+            socketio.emit(point_events[len(each_pallet)], send_point_to_web(each_pallet[-1]), namespace='/')
         
         # Store the last measurement in the database
-        send_ROW_PALLATE(show_pallate(count), pallate_NO, each_pallate[-1])
-        pallate_NO += 1    
+        send_ROW_PALLET(show_pallet(count), pallet_NO, each_pallet[-1])
+        pallet_NO += 1    
 
     elif message.topic == "next":
-        # Calculate total number of pallates and store in the database
-        total_pallates = sum_pallate()
-        print(f"Total pallates for {show_pallate(count)}: {total_pallates}")
-        send_STOCK(show_pallate(count), total_pallates)
-        send_pallate_to_web(total_pallates)
-         # Clear the data lists and move to the next pallate
+        # Calculate total number of pallets and store in the database
+        total_pallets = sum_pallet()
+        print(f"Total pallets for {show_pallet(count)}: {total_pallets}")
+        send_STOCK(show_pallet(count), total_pallets)
+        send_pallet_to_web(total_pallets)
+         # Clear the data lists and move to the next pallet
         distance.clear()
         angle_x.clear()
         angle_y.clear()
-        each_pallate.clear()
+        each_pallet.clear()
         distace_true.clear()
-        pallate_NO = 1
+        pallet_NO = 1
         count += 1 
-        socketio.emit('send_c_row', send_c_row(show_pallate(count)), namespace='/')
-        socketio.emit('send_row', send_row(show_pallate(count-1)), namespace='/')
-        socketio.emit('send_pallate', send_pallate_to_web(total_pallates), namespace='/')
+        socketio.emit('send_c_row', send_c_row(show_pallet(count)), namespace='/')
+        socketio.emit('send_row', send_row(show_pallet(count-1)), namespace='/')
+        socketio.emit('send_pallet', send_pallet_to_web(total_pallets), namespace='/')
         socketio.emit('set_point_zero', send_point_zero(), namespace='/')
 
     elif message.topic == "reset":
-        # Go back to the previous pallate and delete data from the database
-        pallate_NO -= 1
-        if pallate_NO == 0:
-            pallate_NO = 1
-        send_DELETE(show_pallate(count))
+        # Go back to the previous pallet and delete data from the database
+        pallet_NO -= 1
+        if pallet_NO == 0:
+            pallet_NO = 1
+        send_DELETE(show_pallet(count))
         count -= 1
-        send_DELETE(show_pallate(count))
-        print(show_pallate(count))
+        send_DELETE(show_pallet(count))
+        print(show_pallet(count))
         distance.clear()
         angle_x.clear()
         angle_y.clear()
-        each_pallate.clear()
+        each_pallet.clear()
         distace_true.clear()
-        socketio.emit('send_c_row', send_c_row(show_pallate(count)), namespace='/')
+        socketio.emit('send_c_row', send_c_row(show_pallet(count)), namespace='/')
         socketio.emit('set_zero', send_all_zero(), namespace='/')
 
 # SocketIO Handlers to communicate with the client
