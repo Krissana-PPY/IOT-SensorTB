@@ -30,13 +30,17 @@ const char* password = "123456789";
 const char* mqtt_broker = "192.168.4.2";
 const char* mqtt_client_id = "esp32-sensor";
 const char* mqtt_topic = "measure";
+const char* finish_topic = "finish";
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 // MQTT topics
 const char* reverse_topic = "reverse";
 const char* forward_topic = "forward";
-const char* setmpu_topic = "setmpu";
+const char* twofloors_topic = "2F";
+const char* threefloors_topic = "3F";
+const char* UDFfloors_topic = "UDF";
+const char* fourfloors_topic = "fourfloors";
 
 // Stepper motor settings
 #define PUL_PIN 25  // Pulse pin
@@ -54,11 +58,12 @@ String stringOne;
 float distanceOfnumber;
 float distanceOfmotor;
 int steps;
+int steps_lasor;
 
 
 // Function declarations
 void mpu_setup();
-void laser_measure();
+void laser_measure1st();
 void laser_measure1();
 void mpu_measure();
 void reconnect_mqtt();
@@ -110,32 +115,84 @@ void callback(char* topic, byte* payload, unsigned int length) {
     doc["distance"] = "-1";
     char payload[200];
     serializeJson(doc, payload);
-    client.publish("reset", payload);
+//    client.publish("reset", payload);
 
-  } else if (String(topic) == forward_topic) {
-    StaticJsonDocument<200> doc;
-    doc["rotation"] = "-1";
-    doc["facing_up"] = "-1";
-    doc["distance"] = "-1";
-    char payload[200];
-    serializeJson(doc, payload);
-    client.publish("next", payload);
-
-  }  else if (String(topic) == setmpu_topic) {
+  }  else if (String(topic) == twofloors_topic) {
+    digitalWrite(ENA_PIN, LOW);
     mpu_setup();
+    delay(500);
     Serial2.write("D");
     delay(500);
     laser_measure();
     control_stepper_motor(distanceOfmotor);
-    digitalWrite(ENA_PIN, LOW);
-    digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps);
     digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps_lasor);
+    delay(500);
+    client.publish(finish_topic,"");
+    digitalWrite(DIR_PIN, HIGH);
+    stepMotorconvert(steps + steps_lasor);
+    delay(500);
     stepMotorWithLaserMeasurement(steps);
-    client.publish("finish","");
+    delay(500);
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps);
+    delay(500);
+    client.publish(finish_topic,"");
     Serial2.write("O");
+    client.publish(forward_topic,"");
+
+  } else if (String(topic) == threefloors_topic) {
+    digitalWrite(ENA_PIN, LOW);
+    mpu_setup();
+    delay(500);
+    Serial2.write("D");
+    delay(500);
+    laser_measure();
+    control_stepper_motor(distanceOfmotor);
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps_lasor);
+    delay(500);
+    client.publish(finish_topic,"");
+    digitalWrite(DIR_PIN, HIGH);
+    stepMotorconvert(steps + steps_lasor);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps);
+    delay(500);
+    client.publish(finish_topic,"");
+    stepMotorconvert(steps);
+    stepMotorWithLaserMeasurement(steps_lasor);
+    delay(500);
+    client.publish(finish_topic,"");
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps + steps + steps_lasor);
+    Serial2.write("O");
+    client.publish(forward_topic,"");
+
+  } else if (String(topic) == UDFfloors_topic) {
+    digitalWrite(ENA_PIN, LOW);
+    mpu_setup();
+    delay(500);
+    Serial2.write("D");
+    delay(500);
+    laser_measure();
+    control_stepper_motor(distanceOfmotor);
+    digitalWrite(DIR_PIN, HIGH);
+    stepMotorconvert(steps + steps);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps_lasor);
+    delay(500);
+    client.publish(finish_topic,"");
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps + steps + steps_lasor);
+    Serial2.write("O");
+    client.publish(forward_topic,"");
   }
 }
+
 void mpu_setup() {
   Wire.begin();
   Wire.setClock(400000);
@@ -163,18 +220,17 @@ void laser_measure() {
     mpu_measure();
     Serial2.write("D");
     delay(500);
-
     while (Serial2.available()) {
       char data = Serial2.read();
       stringOne += data;
     }
 
     if (stringOne.startsWith(":Er")) {
-      continue; // Restart the loop, effectively re-calling laser_measure()
+      continue; // Restart the loop, effectively re-calling laser_measure1st()
     }
     // If no error, proceed with processing
     distanceOfmotor = parse_distance(stringOne); // Convert stringOne to float distance
-    stringOne = ""
+    stringOne = "";
     success = true; // Mark success as true to exit the loop
   }
 }
@@ -190,7 +246,7 @@ void laser_measure1() {
       stringOne += data;
     }
       if (stringOne.startsWith(":Er")) {
-      continue; // Restart the loop, effectively re-calling laser_measure()
+      continue; // Restart the loop, effectively re-calling laser_measure1st()
     }
     Serial.print(stringOne);
     distanceOfnumber = parse_distance(stringOne); // Convert stringOne to float distance
@@ -229,7 +285,10 @@ void reconnect_mqtt() {
       Serial.println("Connected to MQTT");
       client.subscribe(reverse_topic);
       client.subscribe(forward_topic);
-      client.subscribe(setmpu_topic);
+      client.subscribe(twofloors_topic);
+      client.subscribe(threefloors_topic);
+      client.subscribe(fourfloors_topic);
+      client.subscribe(UDFfloors_topic);
     } else {
       Serial.print("Failed to connect to MQTT. State: ");
       Serial.println(client.state());
@@ -238,11 +297,14 @@ void reconnect_mqtt() {
   }
 }
 
-void control_stepper_motor(float distanceOfnumber) {
-  if (distanceOfnumber > 0) {
-    float angle_rad = atan(80.0 / (distanceOfnumber * 100.0));
+void control_stepper_motor(float distanceOfmotor) {
+  if (distanceOfmotor > 0) {
+    float angle_rad = atan(0.8 / (distanceOfmotor));
+    float angle_rad_lasor = atan(0.6 / (distanceOfmotor));
     float angle_deg = angle_rad * 180 / M_PI;
+    float angle_deg_lasor = angle_rad_lasor * 180 / M_PI;
     steps = floor(angle_deg / STEP_ANGLE); // Calculate the number of steps needed
+    steps_lasor= floor(angle_deg_lasor / STEP_ANGLE); // Calculate the number of steps needed
   }
 }
 
@@ -263,8 +325,8 @@ void stepMotorconvert (int steps) {
 }
 
 void stepMotorWithLaserMeasurement(int steps) {
-  int delayPerStep = (5000000) / (2 * steps); // Delay per step in microseconds for 5 seconds total
-  int stepslaser = (1500000) / (2 * delayPerStep); // 1.5 seconds in milliseconds
+  int delayPerStep = (6000000) / (2 * steps); // Delay per step in microseconds for 6 seconds total
+  int stepslaser = (2000000) / (2 * delayPerStep); // 2 seconds in milliseconds
   int stepscheck = stepslaser;
 
   for (int i = 0; i < steps; i++) {

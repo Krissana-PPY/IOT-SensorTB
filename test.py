@@ -21,10 +21,12 @@ while True:
 
     # MQTT topics mapping
     topics = {
-        "d": "distance",
+        "t": "test",
         "r": "reverse",
         "f": "forward",
-        "s": "setmpu"
+        "ff": "2F",
+        "fff": "3F",
+        "ud": "UDF"
 
     }
 

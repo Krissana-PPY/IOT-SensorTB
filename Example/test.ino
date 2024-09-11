@@ -36,7 +36,10 @@ PubSubClient client(espClient);
 // MQTT topics
 const char* reverse_topic = "reverse";
 const char* forward_topic = "forward";
-const char* setmpu_topic = "setmpu";
+const char* F2_topic = "2F";
+const char* F3_topic = "3F";
+const char* UDF_topic = "UDF";
+const char* test_topic = "test";
 
 // Stepper motor settings
 #define PUL_PIN 25  // Pulse pin
@@ -121,20 +124,94 @@ void callback(char* topic, byte* payload, unsigned int length) {
     serializeJson(doc, payload);
     client.publish("next", payload);
 
-  }  else if (String(topic) == setmpu_topic) {
+  }  else if (String(topic) == F2_topic) {
+    digitalWrite(ENA_PIN, LOW);
     mpu_setup();
+    delay(500);
     Serial2.write("D");
     delay(500);
     laser_measure();
     control_stepper_motor(distanceOfmotor);
-    digitalWrite(ENA_PIN, LOW);
-    digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps);
     digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps);
+    delay(500);
+    digitalWrite(DIR_PIN, HIGH);
     stepMotorWithLaserMeasurement(steps);
+    delay(500);
     client.publish("finish","");
+    delay(500);
+    stepMotorconvert(steps);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps);
+    delay(500);
+    client.publish("finish","");
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps * 2);
+    delay(500);
     Serial2.write("O");
+
+  } else if (String(topic) == F3_topic) {
+    digitalWrite(ENA_PIN, LOW);
+    mpu_setup();
+    delay(500);
+    Serial2.write("D");
+    delay(500);
+    laser_measure();
+    control_stepper_motor(distanceOfmotor);
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps);
+    delay(500);
+    digitalWrite(DIR_PIN, HIGH);
+    stepMotorWithLaserMeasurement(steps);
+    delay(500);
+    client.publish("finish","");
+    delay(500);
+    stepMotorconvert(steps);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps);
+    delay(500);
+    client.publish("finish","");
+    delay(500);
+    stepMotorconvert(steps);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps);
+    delay(500);
+    client.publish("finish","");
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps * 4);
+    delay(500);
+    Serial2.write("O");
+  } else if (String(topic) == UDF_topic) {
+    digitalWrite(ENA_PIN, LOW);
+    mpu_setup();
+    delay(500);
+    Serial2.write("D");
+    delay(500);
+    laser_measure();
+    control_stepper_motor(distanceOfmotor);
+    digitalWrite(DIR_PIN, HIGH);
+    stepMotorconvert(steps * 3);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps);
+    delay(500);
+    client.publish("finish","");
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps * 4);
+    Serial2.write("O");
+  } else if (String(topic) == test_topic) {
+    mpu_measure();
+    Serial2.write("D");
+    delay(500);
+    while (Serial2.available()) {
+        char data = Serial2.read();
+        stringOne += data;
+    }
+    Serial.print(stringOne);
+    Serial.printf("rotation %.2f\n", rotation);
+    Serial.printf("facing %.2f\n", facing_up);
+    stringOne = "";
   }
+
 }
 void mpu_setup() {
   Wire.begin();
@@ -215,7 +292,10 @@ void reconnect_mqtt() {
       Serial.println("Connected to MQTT");
       client.subscribe(reverse_topic);
       client.subscribe(forward_topic);
-      client.subscribe(setmpu_topic);
+      client.subscribe(F2_topic);
+      client.subscribe(F3_topic);
+      client.subscribe(UDF_topic);
+      client.subscribe(test_topic);
     } else {
       Serial.print("Failed to connect to MQTT. State: ");
       Serial.println(client.state());
