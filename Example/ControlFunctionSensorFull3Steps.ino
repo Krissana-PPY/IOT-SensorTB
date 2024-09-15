@@ -39,8 +39,9 @@ const char* reverse_topic = "reverse";
 const char* forward_topic = "forward";
 const char* twofloors_topic = "2F";
 const char* threefloors_topic = "3F";
+const char* fourfloors_topic = "4F";
 const char* UDFfloors_topic = "UDF";
-const char* fourfloors_topic = "fourfloors";
+const char* test_topic = "test"
 
 // Stepper motor settings
 #define PUL_PIN 25  // Pulse pin
@@ -63,7 +64,6 @@ int steps_lasor;
 
 // Function declarations
 void mpu_setup();
-void laser_measure1st();
 void laser_measure1();
 void mpu_measure();
 void reconnect_mqtt();
@@ -128,18 +128,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert(steps);
     delay(500);
+    digitalWrite(DIR_PIN, HIGH);
     stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
-    digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps + steps_lasor);
     delay(500);
-    stepMotorWithLaserMeasurement(steps);
+    stepMotorconvert((steps * 2) - steps_lasor);
     delay(500);
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps);
+    stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
+    digitalWrite(DIR_PIN, LOW);
+    stepMotorconvert(steps + steps_lasor);
+    delay(500);
     Serial2.write("O");
     client.publish(forward_topic,"");
 
@@ -154,21 +155,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert(steps);
     delay(500);
+    digitalWrite(DIR_PIN, HIGH);
     stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
-    digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps + steps_lasor);
     delay(500);
-    stepMotorWithLaserMeasurement(steps);
+    stepMotorconvert((steps * 2) - steps_lasor);
+    delay(500);
+    stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
-    stepMotorconvert(steps);
+    delay(500);
+    stepMotorconvert((steps * 2) - steps_lasor);
+    delay(500);
     stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps + steps + steps_lasor);
+    stepMotorconvert((steps * 3) + steps_lasor);
+    delay(500);
     Serial2.write("O");
     client.publish(forward_topic,"");
 
@@ -181,16 +186,29 @@ void callback(char* topic, byte* payload, unsigned int length) {
     laser_measure();
     control_stepper_motor(distanceOfmotor);
     digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps + steps);
+    stepMotorconvert(steps * 3);
     delay(500);
     stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps + steps + steps_lasor);
+    stepMotorconvert((steps * 3) + steps_lasor);
     Serial2.write("O");
     client.publish(forward_topic,"");
+  } else if (String(topic) == test_topic) {
+    mpu_measure();
+    Serial2.write("D");
+    delay(500);
+    while (Serial2.available()) {
+        char data = Serial2.read();
+        stringOne += data;
+    }
+    Serial.print(stringOne);
+    Serial.printf("rotation %.2f\n", rotation);
+    Serial.printf("facing %.2f\n", facing_up);
+    stringOne = "";
   }
+  
 }
 
 void mpu_setup() {
@@ -289,6 +307,7 @@ void reconnect_mqtt() {
       client.subscribe(threefloors_topic);
       client.subscribe(fourfloors_topic);
       client.subscribe(UDFfloors_topic);
+      client.subscribe(test_topic);
     } else {
       Serial.print("Failed to connect to MQTT. State: ");
       Serial.println(client.state());

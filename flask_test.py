@@ -14,7 +14,7 @@ each_pallet = []
 distace_true = []
 pallet_NO = 1
 count = 0
-MAX_RANGE = 15  # meters
+MAX_RANGE = 16.65  # meters
 
 # List of pallets identifiers
 pallets = [f"AA{i:03}" for i in range(1, 33)]
@@ -84,6 +84,7 @@ def collected_data(input_str):
 # Calculates the number of pallets based on the distance measure
 def cal_pallet(distance_measure):
     pallet = math.floor((MAX_RANGE - distance_measure) / 1.215)
+    print(((MAX_RANGE - distance_measure) / 1.215))
     print(pallet)
     each_pallet.append(pallet)
     return pallet
@@ -96,6 +97,7 @@ def cal_distacetrue (distance_measure, angle_y):
 # Calculates the average true distance
 def calculate_average_distance():
     if distace_true:
+        print(sum(distace_true) / len(distace_true))
         return sum(distace_true) / len(distace_true)
     return 0
 
@@ -313,4 +315,14 @@ def index():
     return render_template("index.html")
 
 if __name__ == "__main__":
+
+    disTest = [4.541999817,4.552999973,4.532000065]
+    angTest = [7.521577358,4.819266319,1.950953126]
+    for i in range(len(disTest)):
+        cal_distacetrue(disTest[i], angTest[i])
+    average_distance_test = calculate_average_distance()
+        # Calculate number of pallets based on the average distance
+    cal_pallet(average_distance_test)    
+    print("each_pallet = ", each_pallet)
     socketio.run(app, host='0.0.0.0', port=5000)
+
