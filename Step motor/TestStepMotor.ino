@@ -1,6 +1,6 @@
-#define PUL_PIN 25 // พินสัญญาณ Pulse
-#define DIR_PIN 26 // พินสัญญาณทิศทาง
-#define ENA_PIN 27 // พินสัญญาณ Enable
+#define PUL_PIN 26 // พินสัญญาณ Pulse
+#define DIR_PIN 27 // พินสัญญาณทิศทาง
+#define ENA_PIN 25 // พินสัญญาณ Enable
 
 void setup() {
   Serial.begin(9600);

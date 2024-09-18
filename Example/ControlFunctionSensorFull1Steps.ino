@@ -41,12 +41,12 @@ const char* twofloors_topic = "2F";
 const char* threefloors_topic = "3F";
 const char* fourfloors_topic = "4F";
 const char* UDFfloors_topic = "UDF";
-const char* test_topic = "test"
+const char* test_topic = "test";
 
 // Stepper motor settings
-#define PUL_PIN 25  // Pulse pin
-#define DIR_PIN 26  // Direction pin
-#define ENA_PIN 27  // Enable pin
+#define PUL_PIN 26  // Pulse pin
+#define DIR_PIN 27  // Direction pin
+#define ENA_PIN 25  // Enable pin
 
 // Other settings
 #define RXD2 16
@@ -131,12 +131,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
     digitalWrite(DIR_PIN, HIGH);
     stepMotorMove(steps);
     delay(500);
-    client.publish(finish_topic,"");
+    //client.publish(finish_topic,"");
     delay(500);
     stepMotorMove(steps);
     delay(500);
     laser_measure1();
-    client.publish(finish_topic,"");
+    //client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
     stepMotorMove(steps);
     delay(500);
@@ -158,17 +158,17 @@ void callback(char* topic, byte* payload, unsigned int length) {
     digitalWrite(DIR_PIN, HIGH);
     stepMotorMove(steps);
     delay(500);
-    client.publish(finish_topic,"");
+    //client.publish(finish_topic,"");
     delay(500);
     stepMotorMove(steps);
     delay(500);
     laser_measure1();
-    client.publish(finish_topic,"");
+    //client.publish(finish_topic,"");
     delay(500);
     stepMotorMove(steps * 2);
     delay(500);
     laser_measure1();
-    client.publish(finish_topic,"");
+    //client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert(steps * 3);
     delay(500);
@@ -187,7 +187,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     stepMotorconvert(steps * 3);
     delay(500);
     laser_measure1();
-    client.publish(finish_topic,"");
+    //client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert(steps * 3);
     Serial2.write("O");
@@ -272,7 +272,7 @@ void laser_measure1() {
     doc["distance"] = distanceOfnumber;
     char payload[200];
     serializeJson(doc, payload);
-    client.publish(mqtt_topic, payload);
+    client.publish(finish_topic, payload);
     
   //  Serial.printf("rotation %.2f\n", rotation);
   //  Serial.printf("facing %.2f\n", facing_up);

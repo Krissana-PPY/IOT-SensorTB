@@ -41,12 +41,12 @@ const char* twofloors_topic = "2F";
 const char* threefloors_topic = "3F";
 const char* fourfloors_topic = "4F";
 const char* UDFfloors_topic = "UDF";
-const char* test_topic = "test"
+const char* test_topic = "test";
 
 // Stepper motor settings
-#define PUL_PIN 25  // Pulse pin
-#define DIR_PIN 26  // Direction pin
-#define ENA_PIN 27  // Enable pin
+#define PUL_PIN 26  // Pulse pin
+#define DIR_PIN 27  // Direction pin
+#define ENA_PIN 25  // Enable pin
 
 // Other settings
 #define RXD2 16

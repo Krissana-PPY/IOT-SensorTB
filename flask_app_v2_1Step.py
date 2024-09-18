@@ -11,14 +11,16 @@ distance = []
 angle_x = []
 angle_y = []
 each_pallet = []
-distace_true = []
 pallet_NO = 1
-count = 0
-check = 0
-MAX_RANGE = 15  # meters
+count_number_pallet = 1
+count_number_ID = 1
+check = True
+MAX_RANGE = 16  # meters
 
 # List of pallets identifiers
-pallets = [f"AA{i:03}" for i in range(1, 33)]
+def generate_pallet_name(count_number_ID, count_number_pallet):
+  name_ID = chr(64 + count_number_ID)
+  return f"A{name_ID}{count_number_pallet:03}"
 
 def create_app():
     # Create a Flask application
@@ -65,8 +67,11 @@ def send_c_row(row):
 def send_row(row):
     return {'row_v': row} # SS Row ID
 
-def show_pallet(index):
-    return pallets[index] # Row ID
+def show_pallet(index1, index2):
+    return generate_pallet_name(index1, index2) # Row ID
+
+def reset_to_one(value):
+  return 1 if value == 0 else value
 
 def clear_data(input_str):
     # Extracts numeric values from the input string
@@ -83,22 +88,12 @@ def collected_data(input_str):
     distance.append(float(data[2]))
 
 # Calculates the number of pallets based on the distance measure
-def cal_pallet(distance_measure):
-    pallet = math.floor((MAX_RANGE - distance_measure) / 1.215)
+def cal_pallet():
+    distance_true = distance * math.cos(convert_angle(angle_y))
+    pallet = math.floor((MAX_RANGE - distance_true) / 1.215)
     print(pallet)
     each_pallet.append(pallet)
     return pallet
-
-# Calculates the true distance using the distance and angle
-def cal_distacetrue (distance_measure, angle_y):
-    adj_distance = distance_measure * math.cos(convert_angle(angle_y))
-    distace_true.append(adj_distance)
-
-# Calculates the average true distance
-def calculate_average_distance():
-    if distace_true:
-        return sum(distace_true) / len(distace_true)
-    return 0
 
 # Sums the number of pallets in the each_pallet list
 def sum_pallet():
@@ -243,83 +238,72 @@ def handle_connect(client, userdata, flags, rc):
 
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
-    global count, pallet_NO
+    global count_number_pallet, pallet_NO, count_number_ID, check
     msg = message.payload.decode()
     print(message.topic + " " + str(msg))
-    socketio.emit('send_c_row', send_c_row(show_pallet(count)), namespace='/')
-
-    if message.topic == "measure":
-        if check == 1 :
-            send_STOCK(show_pallet(count))
-            check += 1
+    socketio.emit('send_c_row', send_c_row(show_pallet(count_number_ID,count_number_pallet)), namespace='/')
+        
+    if message.topic == "finish":
+        if check == True :
+            send_STOCK(show_pallet(count_number_ID,count_number_pallet))
+            check = False
         # Collect data from the message payload
         collected_data(msg)
-        send_EACH_PALLET(show_pallet(count), pallet_NO, distance[-1], angle_x[-1], angle_y[-1])
-        
-    elif message.topic == "finish":
-         # Calculate true distances and average distance
-        for i in range(len(distance)):
-            cal_distacetrue(distance[i], angle_y[i])
-        average_distance = calculate_average_distance()
-        # Calculate number of pallets based on the average distance
-        cal_pallet(average_distance)    
+        send_EACH_PALLET(show_pallet(count_number_ID,count_number_pallet), pallet_NO, distance[-1], angle_x[-1], angle_y[-1])
+#################################################################################################################################################
+        cal_pallet()
         print("each_pallet = ", each_pallet)
-        point_events = {
-            1: 'send_point_1',
-            2: 'send_point_2',
-            3: 'send_point_3',
-            4: 'send_point_4',
-            5: 'send_point_5'
-        }
-
+        point_events = {i: f'send_point_{i}' for i in range(1, len(each_pallet) + 1)}
         if len(each_pallet) in point_events:
             socketio.emit(point_events[len(each_pallet)], send_point_to_web(each_pallet[-1]), namespace='/')
         
         # Store the last measurement in the database
-        send_ROW_PALLET(show_pallet(count), pallet_NO, each_pallet[-1])
+        send_ROW_PALLET(show_pallet(count_number_ID,count_number_pallet), pallet_NO, each_pallet[-1])
         pallet_NO += 1 
         distance.clear()
         angle_x.clear()
-        angle_y.clear()
-        distace_true.clear()   
+        angle_y.clear()  
 
     elif message.topic == "NEXT_ROW":
         # Calculate total number of pallets and store in the database
         total_pallets = sum_pallet()
-        print(f"Total pallets for {show_pallet(count)}: {total_pallets}")
-        send_STOCK_UPDATE(show_pallet(count),total_pallets)
+        print(f"Total pallets for {show_pallet(count_number_ID,count_number_pallet)}: {total_pallets}")
+        send_STOCK_UPDATE(show_pallet(count_number_ID,count_number_pallet),total_pallets)
         send_pallet_to_web(total_pallets)
          # Clear the data lists and move to the next pallet
         distance.clear()
         angle_x.clear()
         angle_y.clear()
         each_pallet.clear()
-        distace_true.clear()
         pallet_NO = 1
-        count += 1 
-        check = 1
-        socketio.emit('send_c_row', send_c_row(show_pallet(count)), namespace='/')
-        socketio.emit('send_row', send_row(show_pallet(count-1)), namespace='/')
+        count_number_pallet += 1 
+        check = True
+        socketio.emit('send_c_row', send_c_row(show_pallet(count_number_ID,count_number_pallet)), namespace='/')
+        socketio.emit('send_row', send_row(show_pallet(count_number_ID,count_number_pallet-1)), namespace='/')
         socketio.emit('send_pallet', send_pallet_to_web(total_pallets), namespace='/')
         socketio.emit('set_point_zero', send_point_zero(), namespace='/')
     
     elif message.topic == "NEXT_ZONE":
-        count -= 1
-    elif message.topic == "reset":
+        count_number_pallet = 1
+        count_number_ID += 1
+        socketio.emit('send_c_row', send_c_row(show_pallet(count_number_ID,count_number_pallet)), namespace='/')
+        socketio.emit('set_point_zero', send_point_zero(), namespace='/')
+
+    elif message.topic == "Revert":
         # Go back to the previous pallet and delete data from the database
-        pallet_NO -= 1
-        if pallet_NO == 0:
-            pallet_NO = 1
-        send_DELETE(show_pallet(count))
-        count -= 1
-        send_DELETE(show_pallet(count))
-        print(show_pallet(count))
+        send_DELETE(show_pallet(count_number_ID,count_number_pallet))
+        pallet_NO = 1 #######################################################################################
+        if count_number_pallet == 1 :
+            count_number_ID = reset_to_one(count_number_ID - 1)
+        count_number_pallet = reset_to_one(count_number_pallet - 1)
+        send_DELETE(show_pallet(count_number_ID,count_number_pallet))
+        print(show_pallet(count_number_ID,count_number_pallet))
+        check = True
         distance.clear()
         angle_x.clear()
         angle_y.clear()
         each_pallet.clear()
-        distace_true.clear()
-        socketio.emit('send_c_row', send_c_row(show_pallet(count)), namespace='/')
+        socketio.emit('send_c_row', send_c_row(show_pallet(count_number_ID,count_number_pallet)), namespace='/')
         socketio.emit('set_zero', send_all_zero(), namespace='/')
 
 # SocketIO Handlers to communicate with the client
