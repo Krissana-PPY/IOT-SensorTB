@@ -124,22 +124,21 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial2.write("D");
     delay(500);
     laser_measure();
-    control_stepper_motor(distanceOfmotor);
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps);
+    laser_measure();
     delay(500);
+    control_stepper_motor(distanceOfmotor);
     digitalWrite(DIR_PIN, HIGH);
     stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
     delay(500);
-    stepMotorconvert((steps * 2) - steps_lasor);
+    stepMotorconvert(steps + steps - steps_lasor);
     delay(500);
     stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps + steps_lasor);
+    stepMotorconvert((steps * 2) + steps_lasor);
     delay(500);
     Serial2.write("O");
     client.publish(forward_topic,"");
@@ -184,17 +183,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial2.write("D");
     delay(500);
     laser_measure();
+    laser_measure();
+    delay(500);
     control_stepper_motor(distanceOfmotor);
     digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps * 3);
+    stepMotorconvert(steps * 4);
     delay(500);
     stepMotorWithLaserMeasurement(steps_lasor);
     delay(500);
     client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert((steps * 3) + steps_lasor);
+    stepMotorconvert((steps * 4) + steps_lasor);
     Serial2.write("O");
     client.publish(forward_topic,"");
+
   } else if (String(topic) == test_topic) {
     mpu_measure();
     Serial2.write("D");
@@ -318,8 +320,8 @@ void reconnect_mqtt() {
 
 void control_stepper_motor(float distanceOfmotor) {
   if (distanceOfmotor > 0) {
-    float angle_rad = atan(0.8 / (distanceOfmotor));
-    float angle_rad_lasor = atan(0.6 / (distanceOfmotor));
+    float angle_rad = atan(0.15 / (distanceOfmotor));
+    float angle_rad_lasor = atan(0.07 / (distanceOfmotor));
     float angle_deg = angle_rad * 180 / M_PI;
     float angle_deg_lasor = angle_rad_lasor * 180 / M_PI;
     steps = floor(angle_deg / STEP_ANGLE); // Calculate the number of steps needed

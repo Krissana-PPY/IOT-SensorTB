@@ -5,7 +5,7 @@ import json
 app = Flask(__name__)
 
 # MQTT Configuration
-app.config['MQTT_BROKER_URL'] = '192.168.4.2'
+app.config['MQTT_BROKER_URL'] = '192.168.4.100'
 app.config['MQTT_BROKER_PORT'] = 1883
 app.config['MQTT_USERNAME'] = ''  # Set username if your broker requires authentication
 app.config['MQTT_PASSWORD'] = ''  # Set password if your broker requires authentication
@@ -40,4 +40,4 @@ def send_command():
         return jsonify({"status": "error", "message": "Invalid command"}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)

@@ -16,7 +16,7 @@ pallet_NO = 1
 count_number_pallet = 1
 count_number_ID = 1
 check = True
-MAX_RANGE = 16  # meters
+MAX_RANGE = 2  # meters
 
 # List of pallets identifiers
 def generate_pallet_name(count_number_ID, count_number_pallet):
@@ -40,7 +40,7 @@ app = create_app()
 socketio = SocketIO(app)
 
 # MQTT Configuration
-app.config['MQTT_BROKER_URL'] = '192.168.4.2'
+app.config['MQTT_BROKER_URL'] = '192.168.4.100'
 app.config['MQTT_BROKER_PORT'] = 1883
 app.config['MQTT_USERNAME'] = ''
 app.config['MQTT_PASSWORD'] = ''
@@ -90,7 +90,9 @@ def collected_data(input_str):
 
 # Calculates the number of pallets based on the distance measure
 def cal_pallet(distance_measure):
-    pallet = math.floor((MAX_RANGE - distance_measure) / 1.215)
+    pallet = math.floor((MAX_RANGE - distance_measure) / 0.24)
+    if pallet < 0:
+        pallet = 0
     print(pallet)
     each_pallet.append(pallet)
     return pallet
@@ -182,7 +184,7 @@ def send_STOCK(row_name):
             cur = connection.cursor()
             cur.execute("""
                 INSERT INTO STOCK (ROW_ID, UPDATE_DATE) 
-                VALUES (%s, %s, %s)
+                VALUES (%s, %s)
                 """, (row_name, date))
             connection.commit()
             print("Insert data")
@@ -257,7 +259,7 @@ def handle_mqtt_message(client, userdata, message):
     if message.topic == "measure":
         if check == True :
             send_STOCK(show_pallet(count_number_ID,count_number_pallet))
-            check = False
+        check = False
         # Collect data from the message payload
         collected_data(msg)
         send_EACH_PALLET(show_pallet(count_number_ID,count_number_pallet), pallet_NO, distance[-1], angle_x[-1], angle_y[-1])
