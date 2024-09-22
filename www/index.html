@@ -94,6 +94,22 @@
     span {
       color: #E1F7F5;
     }
+
+    #startButton {
+      font-size: 24px;
+      padding: 15px 30px;
+      margin-top: 20px;
+      border-radius: 5px;
+      background-color: #4CAF50;
+      border: none;
+      cursor: pointer;
+      color: #ffffff;
+      transition: background-color 0.3s;
+    }
+
+    #startButton:hover {
+      background-color: #45a049;
+    }
   </style>
 </head>
 <body>
@@ -120,6 +136,7 @@
       </div>
     </div>
     <p id="state" class="state">State: wait for connection...</p>
+    <button id="startButton">START</button>
   </div>
 
   <script>
@@ -228,6 +245,11 @@
     function update_row(row) {
       $('#row_v').text(row);
     }
+    
+    $('#startButton').on('click', function() {
+      console.log('START button clicked');
+      socket.emit('start_process');
+    });
 
   </script>
 </body>

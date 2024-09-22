@@ -74,6 +74,9 @@ def show_pallet(index1, index2):
 def reset_to_one(value):
   return 1 if value == 0 else value
 
+def send_mqtt_message(topic, message):
+    mqtt.publish(topic, message)
+
 def clear_data(input_str):
     # Extracts numeric values from the input string
     return re.findall(r'[-+]?\d*\.\d+|\d+', input_str)
@@ -342,6 +345,11 @@ def handle_disconnect():
 @socketio.on('message')
 def handle_message(message):
     print('Received message:', message)
+
+@socketio.on('start_process')
+def handle_start_process():
+    print('START button pressed')
+    send_mqtt_message("start", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
 
 # Route to render the main HTML page
 @app.route("/")
