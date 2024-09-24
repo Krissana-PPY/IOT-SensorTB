@@ -349,7 +349,7 @@ def handle_message(message):
 @socketio.on('start_process')
 def handle_start_process():
     print('START button pressed')
-    send_mqtt_message("start", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
+    send_mqtt_message("UDF", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
 
 @socketio.on('results_process')
 def handle_start_process():

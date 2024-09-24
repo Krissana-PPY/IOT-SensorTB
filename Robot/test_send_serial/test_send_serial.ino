@@ -1,4 +1,4 @@
-#define RXD1 12  // Adjust as per your wiring
+#define RXD1 14  // Adjust as per your wiring
 #define TXD1 13  // Adjust as per your wiring
 void setup() {
   // Start Serial Monitor

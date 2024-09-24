@@ -32,7 +32,7 @@ uint16_t packetSize;
 #define RXD2 16
 #define TXD2 17
 
-#define RXD1 12  // Adjust as per your wiring
+#define RXD1 14  // Adjust as per your wiring
 #define TXD1 13  // Adjust as per your wiring
 
 #define STEP_ANGLE 0.1125 // Angle per step in degrees
@@ -184,7 +184,7 @@ void twoflools()
     client.publish(finish_topic,"");
 //    digitalWrite(DIR_PIN, LOW);
 //    stepMotorconvert(steps[1]);   delay(500);
-    client.publish(forward_topic,"");
+//    client.publish(forward_topic,"");
   } else {
     client.publish(ERROR_TOPIC,"twoflools");
   }   
@@ -214,7 +214,7 @@ void threefloors()
     client.publish(finish_topic,""); 
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert((steps[0] * 2) - steps[1]); delay(500);
-    client.publish(forward_topic,"");
+//    client.publish(forward_topic,"");
   } else {
     client.publish(ERROR_TOPIC,"threeflools");
   }
@@ -287,6 +287,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial1.write('F');
     if (!check_done(10000)) return;
     twoflools();
+    Serial1.write('B');
+    if (!check_done(10000)) return;
     Serial1.write('B');
     if (!check_done(10000)) return;
     Serial1.write('B');
