@@ -175,15 +175,16 @@ void twoflools()
     control_stepper_motor(steps, distanceOfmotor);
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert(steps[0] * 2);  delay(500);
-    digitalWrite(DIR_PIN, HIGH); 
+//    digitalWrite(DIR_PIN, HIGH); 
     stepMotorWithLaserMeasurement(steps[1]);  delay(500);
     client.publish(finish_topic,"");   delay(500);
-    stepMotorconvert((steps[0] * 2) - steps[1]);  delay(500);
+    digitalWrite(DIR_PIN, HIGH); 
+    stepMotorconvert(steps[0] * 2);  delay(500);
     stepMotorWithLaserMeasurement(steps[1]);   delay(500);
     client.publish(finish_topic,"");
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps[1]);   delay(500);
-    //client.publish(forward_topic,"");
+//    digitalWrite(DIR_PIN, LOW);
+//    stepMotorconvert(steps[1]);   delay(500);
+    client.publish(forward_topic,"");
   } else {
     client.publish(ERROR_TOPIC,"twoflools");
   }   
@@ -200,18 +201,20 @@ void threefloors()
     control_stepper_motor(steps, distanceOfmotor);
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert(steps[0] * 2);     delay(500);
-    digitalWrite(DIR_PIN, HIGH);
+//    digitalWrite(DIR_PIN, HIGH);
     stepMotorWithLaserMeasurement(steps[1]); delay(500);
     client.publish(finish_topic,"");     delay(500);
-    stepMotorconvert((steps[0] * 2) - steps[1]);     delay(500);
+    digitalWrite(DIR_PIN, HIGH); 
+    stepMotorconvert(steps[0] * 2);     delay(500);
     stepMotorWithLaserMeasurement(steps[1]);  delay(500);
     client.publish(finish_topic,"");     delay(500);
-    stepMotorconvert((steps[0] * 2) - steps[1]); delay(500);
+    stepMotorconvert((steps[0] * 2)); delay(500);
+    digitalWrite(DIR_PIN, LOW);
     stepMotorWithLaserMeasurement(steps[1]); delay(500);
     client.publish(finish_topic,""); 
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert((steps[0] * 2) + steps[1]); delay(500);
-    //client.publish(forward_topic,"");
+    stepMotorconvert((steps[0] * 2) - steps[1]); delay(500);
+    client.publish(forward_topic,"");
   } else {
     client.publish(ERROR_TOPIC,"threeflools");
   }
@@ -226,11 +229,12 @@ void UDFfloors()
   if(distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps[0] * 2);  delay(500);
+    stepMotorconvert(steps[0]);  delay(500);
+//    digitalWrite(DIR_PIN, LOW);
     stepMotorWithLaserMeasurement(steps[1]); delay(500);
     client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert((steps[0] * 2) + steps[1]);      
+    stepMotorconvert(steps[0] + steps[1]);      
     //client.publish(forward_topic,"");
   } else {
     client.publish(ERROR_TOPIC,"UDFfloors");
@@ -278,30 +282,50 @@ void callback(char* topic, byte* payload, unsigned int length) {
   } else if (String(topic) == start_topic) {
     twoflools();
     Serial1.write('F');
-    check_done();
+    if (!check_done(10000)) return;  // หาก check_done ใช้เวลานานเกิน 10 วิให้จบการทำงาน
     UDFfloors();
     Serial1.write('F');
-    check_done();
+    if (!check_done(10000)) return;
     twoflools();
     Serial1.write('B');
-    check_done();
+    if (!check_done(10000)) return;
     Serial1.write('B');
-    check_done();
+    if (!check_done(10000)) return;
   }
   
 }
 
-void check_done {
+bool check_done(unsigned long timeout) {
+  String received = ""; // ตัวแปรสำหรับเก็บข้อมูลที่อ่านได้
+  unsigned long startMillis = millis(); // เก็บเวลาที่เริ่มต้น
 
-  while (!Serial1.available()) {
-    char received = Serial2.read(); // Read the character
-    if ( received == "done"){
+  while (true) {
+    // ตรวจสอบเวลาที่ผ่านไป หากเกิน timeout (10 วินาที = 10000 มิลลิวินาที) จะออกจากฟังก์ชันทันที
+    if (millis() - startMillis >= timeout) {
+      Serial.println("Timeout: Exiting check_done");
+      return false; // จบการทำงานเนื่องจากเกินเวลา
+    }
+
+    // รอให้มีข้อมูลเข้ามา
+    while (!Serial1.available()) {
+      // รอข้อมูล
+      if (millis() - startMillis >= timeout) {
+        Serial.println("Timeout while waiting for data: Exiting check_done");
+        return false; // จบการทำงานเนื่องจากเกินเวลา
+      }
+    }
+
+    // อ่านข้อมูลหนึ่งตัวอักษร
+    char c = Serial1.read();
+    received += c; // เก็บตัวอักษรที่อ่านได้
+
+    // ตรวจสอบว่าข้อมูลที่ได้รับมีคำว่า "done" หรือไม่
+    if (received.endsWith("done")) {
       Serial.print("Received from Arduino: ");
-      Serial.println(received);       // Print it on the Serial Monitor
-      break;
+      Serial.println(received); // พิมพ์ข้อมูลที่ได้รับ
+      return true; // ข้อมูลครบ จบการทำงานปกติ
     }
   }
-  
 }
 
 /*

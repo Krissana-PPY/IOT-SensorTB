@@ -32,7 +32,7 @@ def create_app():
     app.config['MYSQL_HOST'] = 'localhost'
     app.config['MYSQL_USER'] = 'root'
     app.config['MYSQL_PASSWORD'] = '1234'
-    app.config['MYSQL_DB'] = 'mydb'
+    app.config['MYSQL_DB'] = 'database_tbl'
     
     return app
 
@@ -350,6 +350,11 @@ def handle_message(message):
 def handle_start_process():
     print('START button pressed')
     send_mqtt_message("start", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
+
+@socketio.on('results_process')
+def handle_start_process():
+    print('RESULTS button pressed')
+    send_mqtt_message("NEXT_ROW", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
 
 # Route to render the main HTML page
 @app.route("/")

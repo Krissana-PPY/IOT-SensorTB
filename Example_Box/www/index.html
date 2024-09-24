@@ -95,7 +95,7 @@
       color: #E1F7F5;
     }
 
-    #startButton {
+    #startButton, #resultsButton {
       font-size: 24px;
       padding: 15px 30px;
       margin-top: 20px;
@@ -105,11 +105,17 @@
       cursor: pointer;
       color: #ffffff;
       transition: background-color 0.3s;
+      width: 200px;
     }
 
-    #startButton:hover {
+    #startButton:hover, #startButton:hover {
       background-color: #45a049;
     }
+
+    #startButton {
+      margin-right: 20px; /* เพิ่มระยะห่างทางขวา */
+    }
+
   </style>
 </head>
 <body>
@@ -137,6 +143,7 @@
     </div>
     <p id="state" class="state">State: wait for connection...</p>
     <button id="startButton">START</button>
+    <button id="resultsButton">RESULTS</button>
   </div>
 
   <script>
@@ -249,6 +256,11 @@
     $('#startButton').on('click', function() {
       console.log('START button clicked');
       socket.emit('start_process');
+    });
+
+    $('#resultsButton').on('click', function() {
+      console.log('RESULTS button clicked');
+      socket.emit('results_process');
     });
 
   </script>
