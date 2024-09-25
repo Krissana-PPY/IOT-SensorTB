@@ -32,7 +32,8 @@ def create_app():
     app.config['MYSQL_HOST'] = 'localhost'
     app.config['MYSQL_USER'] = 'root'
     app.config['MYSQL_PASSWORD'] = '1234'
-    app.config['MYSQL_DB'] = 'database_tbl'
+#    app.config['MYSQL_DB'] = 'database_tbl'
+    app.config['MYSQL_DB'] = 'mydb'
     
     return app
 
@@ -178,7 +179,7 @@ def send_DELETE(row_name):
         if connection and connection.is_connected():
             connection.close()
 
-def send_STOCK(row_name):
+def send_STOCK(row_name, pallet):
     try:
         connection = get_db_connection()
         if connection and connection.is_connected():
@@ -186,9 +187,9 @@ def send_STOCK(row_name):
             date = current_time.strftime("%Y-%m-%d") 
             cur = connection.cursor()
             cur.execute("""
-                INSERT INTO STOCK (ROW_ID, UPDATE_DATE) 
-                VALUES (%s, %s)
-                """, (row_name, date))
+                INSERT INTO STOCK (ROW_ID, PALLET, UPDATE_DATE) 
+                VALUES (%s, %s, %s)
+                """, (row_name,pallet, date))
             connection.commit()
             print("Insert data")
             cur.close()
@@ -201,26 +202,26 @@ def send_STOCK(row_name):
     finally:
         if connection and connection.is_connected():
             connection.close()
-def send_STOCK_UPDATE(row_name,pallet):
-    try:
-        connection = get_db_connection()
-        if connection and connection.is_connected():
-            current_time = datetime.now()
-            cur = connection.cursor()
-            date = current_time.strftime("%Y-%m-%d")
-            cur.execute("UPDATE STOCK SET PALLET = %s WHERE ROW_ID = %s AND UPDATE_DATE = %s",(pallet, row_name, date))
-            connection.commit()
-            print("Update data")
-            cur.close()
-    except mysql.connector.Error as err:
-        print(f"Database error: {err}")
-        return "error"
-    except Exception as e:
-        print(f"Error: {e}")
-        return "error"
-    finally:
-        if connection and connection.is_connected():
-            connection.close()
+#def send_STOCK_UPDATE(row_name,pallet):
+#    try:
+#        connection = get_db_connection()
+#        if connection and connection.is_connected():
+#            current_time = datetime.now()
+#            cur = connection.cursor()
+#            date = current_time.strftime("%Y-%m-%d")
+#            cur.execute("UPDATE STOCK SET PALLET = %s WHERE ROW_ID = %s AND UPDATE_DATE = %s",(pallet, row_name, date))
+#            connection.commit()
+#            print("Update data")
+#            cur.close()
+#    except mysql.connector.Error as err:
+#        print(f"Database error: {err}")
+#        return "error"
+#    except Exception as e:
+#        print(f"Error: {e}")
+#        return "error"
+#    finally:
+#        if connection and connection.is_connected():
+#            connection.close()
 
 def send_ROW_PALLET(row_name, pallet_no, each_pallet):
     try:
@@ -260,9 +261,6 @@ def handle_mqtt_message(client, userdata, message):
     socketio.emit('send_c_row', send_c_row(show_pallet(count_number_ID,count_number_pallet)), namespace='/')
 
     if message.topic == "measure":
-        if check == True :
-            send_STOCK(show_pallet(count_number_ID,count_number_pallet))
-        check = False
         # Collect data from the message payload
         collected_data(msg)
         send_EACH_PALLET(show_pallet(count_number_ID,count_number_pallet), pallet_NO, distance[-1], angle_x[-1], angle_y[-1])
@@ -291,7 +289,7 @@ def handle_mqtt_message(client, userdata, message):
         # Calculate total number of pallets and store in the database
         total_pallets = sum_pallet()
         print(f"Total pallets for {show_pallet(count_number_ID,count_number_pallet)}: {total_pallets}")
-        send_STOCK_UPDATE(show_pallet(count_number_ID,count_number_pallet),total_pallets)
+        send_STOCK(show_pallet(count_number_ID,count_number_pallet),total_pallets)
         send_pallet_to_web(total_pallets)
          # Clear the data lists and move to the next pallet
         distance.clear()
@@ -346,9 +344,14 @@ def handle_disconnect():
 def handle_message(message):
     print('Received message:', message)
 
-@socketio.on('start_process')
+@socketio.on('F2_process')
 def handle_start_process():
-    print('START button pressed')
+    print('2F button pressed')
+    send_mqtt_message("2F", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
+
+@socketio.on('UDF_process')
+def handle_start_process():
+    print('UDF button pressed')
     send_mqtt_message("UDF", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
 
 @socketio.on('results_process')

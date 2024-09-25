@@ -2,11 +2,8 @@
 <html>
 <head>
   <title>STOCK-CHECKING</title>
-  <script src="https://cdn.socket.io/3.1.3/socket.io.min.js"></script>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=PT+Sans&display=swap" rel="stylesheet">
+  <script src="js/socket.io.min.js"></script>
+  <script src="js/jquery.min.js"></script>
   <style>
     body {
       font-family: 'PT Sans', sans-serif;
@@ -17,6 +14,19 @@
       text-align: center;
       margin-top: 50px;
     }
+
+    @font-face {
+      font-family: 'PT Sans';
+      src: url('fonts/PTSans-Regular.woff2') format('woff2'),
+           url('fonts/PTSans-Regular.woff') format('woff');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    body {
+      font-family: 'PT Sans', sans-serif;
+    }
+
     
     h1 {
       color: #ffffff;
@@ -31,7 +41,7 @@
     }
 
     .valueDiv {
-      width: 150px;
+      width: 178px;
       text-align: center;
       margin: 15px;
       padding: 10px;
@@ -53,7 +63,7 @@
     }
 
     #c_row_v {
-      font-size: 36px;;
+      font-size: 28px;;
       font-weight: bold;
       color: #FF5733;
     }
@@ -95,7 +105,7 @@
       color: #E1F7F5;
     }
 
-    #startButton, #resultsButton {
+    #F2Button, #UDFButton, #resultsButton {
       font-size: 24px;
       padding: 15px 30px;
       margin-top: 20px;
@@ -108,11 +118,11 @@
       width: 200px;
     }
 
-    #startButton:hover, #startButton:hover {
+    #F2Button:hover, #UDFButton:hover, #resultsButton:hover {
       background-color: #45a049;
     }
 
-    #startButton {
+    #F2Button, #UDFButton, #resultsButton {
       margin-right: 20px; /* เพิ่มระยะห่างทางขวา */
     }
 
@@ -142,12 +152,21 @@
       </div>
     </div>
     <p id="state" class="state">State: wait for connection...</p>
-    <button id="startButton">START</button>
-    <button id="resultsButton">RESULTS</button>
+    <button id="F2Button">สองชั้นล่าง</button>
+    <button id="UDFButton">ชั้นบน</button>
+    <button id="resultsButton">ผลลัพธ์</button>
   </div>
 
   <script>
     var socket = io();
+
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').then(function(registration) {
+      console.log('Service Worker registered with scope:', registration.scope);
+    }).catch(function(error) {
+      console.log('Service Worker registration failed:', error);
+    });
+  }
 
     socket.on('connect', function() {
       console.log('Connected to server');
@@ -253,9 +272,14 @@
       $('#row_v').text(row);
     }
     
-    $('#startButton').on('click', function() {
-      console.log('START button clicked');
-      socket.emit('start_process');
+    $('#F2Button').on('click', function() {
+      console.log('F2 button clicked');
+      socket.emit('F2_process');
+    });
+
+    $('#UDFButton').on('click', function() {
+      console.log('UDF button clicked');
+      socket.emit('UDF_process');
     });
 
     $('#resultsButton').on('click', function() {

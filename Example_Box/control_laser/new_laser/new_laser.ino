@@ -143,8 +143,8 @@ void control_stepper_motor(int step[],  float distanceOfmotor) {
 }
 
 void stepMotorWithLaserMeasurement(int steps) {
-  int delayPerStep = (6000000) / (2 * steps); // Delay per step in microseconds for 6 seconds total
-  int stepslaser = (2000000) / (2 * delayPerStep); // 2 seconds in milliseconds
+  int delayPerStep = (3000000) / (2 * steps); // Delay per step in microseconds for 6 seconds total
+  int stepslaser = (1000000) / (2 * delayPerStep); // 2 seconds in milliseconds
   int stepscheck = stepslaser;
 
   for (int i = 0; i < steps; i++) {
@@ -174,14 +174,15 @@ void twoflools()
   if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps[0] * 2);  delay(500);
+    stepMotorconvert(steps[0] * 2);  delay(250);
 //    digitalWrite(DIR_PIN, HIGH); 
-    stepMotorWithLaserMeasurement(steps[1]);  delay(500);
-    client.publish(finish_topic,"");   delay(500);
+    stepMotorWithLaserMeasurement(steps[1]);  delay(250);
+    client.publish(finish_topic,"");   delay(250);
     digitalWrite(DIR_PIN, HIGH); 
-    stepMotorconvert(steps[0] * 2);  delay(500);
-    stepMotorWithLaserMeasurement(steps[1]);   delay(500);
+    stepMotorconvert(steps[0] * 2);  delay(250);
+    stepMotorWithLaserMeasurement(steps[1]);   delay(250);
     client.publish(finish_topic,"");
+    Serial2.write("O");
 //    digitalWrite(DIR_PIN, LOW);
 //    stepMotorconvert(steps[1]);   delay(500);
 //    client.publish(forward_topic,"");
@@ -200,21 +201,22 @@ void threefloors()
   if(distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps[0] * 2);     delay(500);
+    stepMotorconvert(steps[0] * 2);     delay(250);
 //    digitalWrite(DIR_PIN, HIGH);
-    stepMotorWithLaserMeasurement(steps[1]); delay(500);
-    client.publish(finish_topic,"");     delay(500);
+    stepMotorWithLaserMeasurement(steps[1]); delay(250);
+    client.publish(finish_topic,"");     delay(250);
     digitalWrite(DIR_PIN, HIGH); 
-    stepMotorconvert(steps[0] * 2);     delay(500);
-    stepMotorWithLaserMeasurement(steps[1]);  delay(500);
-    client.publish(finish_topic,"");     delay(500);
-    stepMotorconvert((steps[0] * 2)); delay(500);
+    stepMotorconvert(steps[0] * 2);     delay(250);
+    stepMotorWithLaserMeasurement(steps[1]);  delay(250);
+    client.publish(finish_topic,"");     delay(250);
+    stepMotorconvert((steps[0] * 2)); delay(250);
     digitalWrite(DIR_PIN, LOW);
-    stepMotorWithLaserMeasurement(steps[1]); delay(500);
+    stepMotorWithLaserMeasurement(steps[1]); delay(250);
     client.publish(finish_topic,""); 
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert((steps[0] * 2) - steps[1]); delay(500);
+    stepMotorconvert((steps[0] * 2) - steps[1]); delay(250);
 //    client.publish(forward_topic,"");
+    Serial2.write("O");
   } else {
     client.publish(ERROR_TOPIC,"threeflools");
   }
@@ -229,13 +231,14 @@ void UDFfloors()
   if(distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps[0]);  delay(500);
+    stepMotorconvert(steps[0]);  delay(250);
 //    digitalWrite(DIR_PIN, LOW);
-    stepMotorWithLaserMeasurement(steps[1]); delay(500);
+    stepMotorWithLaserMeasurement(steps[1]); delay(250);
     client.publish(finish_topic,"");
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert(steps[0] + steps[1]);      
     //client.publish(forward_topic,"");
+    Serial2.write("O");
   } else {
     client.publish(ERROR_TOPIC,"UDFfloors");
   }
@@ -279,7 +282,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
   } else if (String(topic) == test_topic) {
     test();
 
-  } else if (String(topic) == start_topic) {
+  } 
+/*  else if (String(topic) == start_topic) {
     twoflools();
     Serial1.write('F');
     if (!check_done(10000)) return;  // หาก check_done ใช้เวลานานเกิน 10 วิให้จบการทำงาน
@@ -293,11 +297,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (!check_done(10000)) return;
     Serial1.write('B');
     if (!check_done(10000)) return;
-  }
+  }*/
   
 }
 
-bool check_done(unsigned long timeout) {
+/*bool check_done(unsigned long timeout) {
   String received = ""; // ตัวแปรสำหรับเก็บข้อมูลที่อ่านได้
   unsigned long startMillis = millis(); // เก็บเวลาที่เริ่มต้น
 
@@ -330,7 +334,7 @@ bool check_done(unsigned long timeout) {
   }
 }
 
-/*
+
 command  1 = open, 2 = measure, 3 = state 4 = close 
 
 return -1 error
