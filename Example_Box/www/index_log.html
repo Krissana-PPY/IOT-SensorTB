@@ -99,7 +99,7 @@
       color: #E1F7F5;
     }
 
-    #F2Button, #UDFButton, #resultsButton {
+    #startButton, #resultsButton {
       font-size: 24px;
       padding: 15px 30px;
       margin-top: 20px;
@@ -112,11 +112,11 @@
       width: 200px;
     }
 
-    #F2Button:hover, #UDFButton:hover, #resultsButton:hover {
-      background-color: rgb(250, 17, 17);
+    #startButton:hover, #resultsButton:hover {
+      background-color: #45a049;
     }
 
-    #F2Button, #UDFButton, #resultsButton {
+    #startButton, #resultsButton {
       margin-right: 20px; /* เพิ่มระยะห่างทางขวา */
     }
 
@@ -146,9 +146,8 @@
       </div>
     </div>
     <p id="state" class="state">State: wait for connection...</p>
-    <button id="F2Button">สองชั้นล่าง</button>
-    <button id="UDFButton">ชั้นบน</button>
-    <button id="resultsButton">ผลลัพธ์</button>
+    <button id="startButton">START</button>
+    <button id="resultsButton">RESULTS</button>
   </div>
 
   <script>
@@ -266,14 +265,9 @@
       $('#row_v').text(row);
     }
     
-    $('#F2Button').on('click', function() {
-      console.log('F2 button clicked');
-      socket.emit('F2_process');
-    });
-
-    $('#UDFButton').on('click', function() {
-      console.log('UDF button clicked');
-      socket.emit('UDF_process');
+    $('#startButton').on('click', function() {
+      console.log('START button clicked');
+      socket.emit('start_process');
     });
 
     $('#resultsButton').on('click', function() {

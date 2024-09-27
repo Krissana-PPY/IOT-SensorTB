@@ -284,6 +284,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   } 
   else if (String(topic) == start_topic) {
+    Serial1.write('F');
+    if (!check_done(10000)) return;  // หาก check_done ใช้เวลานานเกิน 10 วิให้จบการทำงาน
     twoflools();
     Serial1.write('F');
     if (!check_done(10000)) return;  // หาก check_done ใช้เวลานานเกิน 10 วิให้จบการทำงาน
@@ -291,6 +293,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial1.write('F');
     if (!check_done(10000)) return;
     twoflools();
+    Serial1.write('B');
+    if (!check_done(10000)) return;
     Serial1.write('B');
     if (!check_done(10000)) return;
     Serial1.write('B');

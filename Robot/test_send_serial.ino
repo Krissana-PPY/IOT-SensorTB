@@ -1,5 +1,5 @@
-#define RXD1 14  // Adjust as per your wiring
-#define TXD1 13  // Adjust as per your wiring
+#define RXD1 14  // Adjust as per your wiring7 9tx
+#define TXD1 13  // Adjust as per your wiring5 8rx
 void setup() {
   // Start Serial Monitor
   Serial.begin(115200);
@@ -41,11 +41,19 @@ bool check_done(unsigned long timeout) {
 }
 void loop() {
     Serial1.write('F');
+//    delay(3000);
+    Serial.print("send F");
     if (!check_done(10000)) return;  // หาก check_done ใช้เวลานานเกิน 10 วิให้จบการทำงาน
     Serial1.write('F');
+//    delay(3000);
+    Serial.print("send F");
     if (!check_done(10000)) return;
     Serial1.write('B');
+//    delay(3000);
+    Serial.print("send B");
     if (!check_done(10000)) return;
     Serial1.write('B');
+//    delay(3000);
+    Serial.print("send B");
     if (!check_done(10000)) return;
 }
