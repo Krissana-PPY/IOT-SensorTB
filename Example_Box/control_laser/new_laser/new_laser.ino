@@ -283,7 +283,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     test();
 
   } 
-/*  else if (String(topic) == start_topic) {
+  else if (String(topic) == start_topic) {
     twoflools();
     Serial1.write('F');
     if (!check_done(10000)) return;  // หาก check_done ใช้เวลานานเกิน 10 วิให้จบการทำงาน
@@ -295,13 +295,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (!check_done(10000)) return;
     Serial1.write('B');
     if (!check_done(10000)) return;
-    Serial1.write('B');
-    if (!check_done(10000)) return;
-  }*/
+  }
   
 }
 
-/*bool check_done(unsigned long timeout) {
+bool check_done(unsigned long timeout) {
   String received = ""; // ตัวแปรสำหรับเก็บข้อมูลที่อ่านได้
   unsigned long startMillis = millis(); // เก็บเวลาที่เริ่มต้น
 
@@ -334,7 +332,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-
+/*
 command  1 = open, 2 = measure, 3 = state 4 = close 
 
 return -1 error

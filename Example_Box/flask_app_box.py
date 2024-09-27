@@ -344,15 +344,10 @@ def handle_disconnect():
 def handle_message(message):
     print('Received message:', message)
 
-@socketio.on('F2_process')
+@socketio.on('start_process')
 def handle_start_process():
-    print('2F button pressed')
-    send_mqtt_message("2F", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
-
-@socketio.on('UDF_process')
-def handle_start_process():
-    print('UDF button pressed')
-    send_mqtt_message("UDF", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
+    print('start button pressed')
+    send_mqtt_message("start", "1")  # ส่ง "1" เป็นข้อความเมื่อเริ่มกระบวนการ
 
 @socketio.on('results_process')
 def handle_start_process():

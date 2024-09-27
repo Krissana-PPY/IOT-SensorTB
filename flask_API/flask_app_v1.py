@@ -36,7 +36,7 @@ app = create_app()
 socketio = SocketIO(app)
 
 # MQTT Configuration
-app.config['MQTT_BROKER_URL'] = '192.168.4.2'
+app.config['MQTT_BROKER_URL'] = '192.168.4.100'
 app.config['MQTT_BROKER_PORT'] = 1883
 app.config['MQTT_USERNAME'] = ''
 app.config['MQTT_PASSWORD'] = ''
