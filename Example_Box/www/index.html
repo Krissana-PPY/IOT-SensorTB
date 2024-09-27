@@ -2,8 +2,10 @@
 <html>
 <head>
   <title>STOCK-CHECKING</title>
-  <script src="js/socket.io.min.js"></script>
-  <script src="js/jquery.min.js"></script>
+  <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='fonts/PTSans-Regular.woff2') }}">
   <style>
     body {
       font-family: 'PT Sans', sans-serif;
@@ -13,14 +15,6 @@
     .bodyDiv {
       text-align: center;
       margin-top: 50px;
-    }
-
-    @font-face {
-      font-family: 'PT Sans';
-      src: url('fonts/PTSans-Regular.woff2') format('woff2'),
-           url('fonts/PTSans-Regular.woff') format('woff');
-      font-weight: normal;
-      font-style: normal;
     }
 
     body {
