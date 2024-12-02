@@ -32,9 +32,6 @@ uint16_t packetSize;
 #define RXD2 16
 #define TXD2 17
 
-#define RXD1 14  // Adjust as per your wiring
-#define TXD1 13  // Adjust as per your wiring
-
 #define STEP_ANGLE 0.1125 // Angle per step in degrees
 
 uint8_t RETRY = 0; 
@@ -60,7 +57,6 @@ void mpu_measure(float measure_return[]);
 
 void setup() {
   Serial.begin(115200);
-  Serial1.begin(9600, SERIAL_8N1, RXD1, TXD1);
   Serial2.begin(19200, SERIAL_8N1, RXD2, TXD2);
  
   Wire.begin();
@@ -174,12 +170,12 @@ void twoflools()
   if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps[0] * 2);  delay(250);
+    stepMotorconvert(steps[0] * 2);
 //    digitalWrite(DIR_PIN, HIGH); 
     stepMotorWithLaserMeasurement(steps[1]);  delay(250);
     client.publish(finish_topic,"");   delay(250);
     digitalWrite(DIR_PIN, HIGH); 
-    stepMotorconvert(steps[0] * 2);  delay(250);
+    stepMotorconvert(steps[0] * 2);
     stepMotorWithLaserMeasurement(steps[1]);   delay(250);
     client.publish(finish_topic,"");
     Serial2.write("O");
@@ -231,7 +227,7 @@ void UDFfloors()
   if(distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps[0]);  delay(250);
+    stepMotorconvert(steps[0]);
 //    digitalWrite(DIR_PIN, LOW);
     stepMotorWithLaserMeasurement(steps[1]); delay(250);
     client.publish(finish_topic,"");
@@ -246,13 +242,17 @@ void UDFfloors()
 
 void test()
  {
-    float steps[2] = {0.0, 0.0}; // steps, step_lasor
+    int steps[2] = {0, 0}; // steps, step_lasor
+    mpu_setup(); delay(500);
     float distanceOfmotor = laser_value(MEASURE);
-    mpu_measure(steps);
-    Serial.println(distanceOfmotor);
-    Serial.printf("rotation %.2f\n", steps[0]);
-    Serial.printf("facing %.2f\n", steps[1]);
-
+    if(distanceOfmotor > 0) {
+      Serial.println(distanceOfmotor);
+      laser_measure1();
+      client.publish(finish_topic,"");
+      Serial2.write("O");
+    } else {
+    client.publish(ERROR_TOPIC,"Test");
+    }
  }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -282,58 +282,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   } else if (String(topic) == test_topic) {
     test();
 
-  } 
-  else if (String(topic) == start_topic) {
-    Serial1.write('F');
-    if (!check_done(10000)) return;  // หาก check_done ใช้เวลานานเกิน 10 วิให้จบการทำงาน
-    twoflools();
-    Serial1.write('F');
-    if (!check_done(10000)) return;  // หาก check_done ใช้เวลานานเกิน 10 วิให้จบการทำงาน
-    UDFfloors();
-    Serial1.write('F');
-    if (!check_done(10000)) return;
-    twoflools();
-    Serial1.write('B');
-    if (!check_done(10000)) return;
-    Serial1.write('B');
-    if (!check_done(10000)) return;
-    Serial1.write('B');
-    if (!check_done(10000)) return;
-  }
-  
-}
-
-bool check_done(unsigned long timeout) {
-  String received = ""; // ตัวแปรสำหรับเก็บข้อมูลที่อ่านได้
-  unsigned long startMillis = millis(); // เก็บเวลาที่เริ่มต้น
-
-  while (true) {
-    // ตรวจสอบเวลาที่ผ่านไป หากเกิน timeout (10 วินาที = 10000 มิลลิวินาที) จะออกจากฟังก์ชันทันที
-    if (millis() - startMillis >= timeout) {
-      Serial.println("Timeout: Exiting check_done");
-      return false; // จบการทำงานเนื่องจากเกินเวลา
-    }
-
-    // รอให้มีข้อมูลเข้ามา
-    while (!Serial1.available()) {
-      // รอข้อมูล
-      if (millis() - startMillis >= timeout) {
-        Serial.println("Timeout while waiting for data: Exiting check_done");
-        return false; // จบการทำงานเนื่องจากเกินเวลา
-      }
-    }
-
-    // อ่านข้อมูลหนึ่งตัวอักษร
-    char c = Serial1.read();
-    received += c; // เก็บตัวอักษรที่อ่านได้
-
-    // ตรวจสอบว่าข้อมูลที่ได้รับมีคำว่า "done" หรือไม่
-    if (received.endsWith("done")) {
-      Serial.print("Received from Arduino: ");
-      Serial.println(received); // พิมพ์ข้อมูลที่ได้รับ
-      return true; // ข้อมูลครบ จบการทำงานปกติ
-    }
-  }
+  }   
 }
 
 /*

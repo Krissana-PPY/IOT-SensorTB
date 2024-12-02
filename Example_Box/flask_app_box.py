@@ -16,7 +16,7 @@ pallet_NO = 1
 count_number_pallet = 1
 count_number_ID = 1
 check = True
-MAX_RANGE = 2  # meters
+MAX_RANGE = 1.5  # meters
 
 # List of pallets identifiers
 def generate_pallet_name(count_number_ID, count_number_pallet):
