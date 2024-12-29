@@ -208,7 +208,8 @@ void twoflools()
     digitalWrite(DIR_PIN, HIGH);
     client.publish(finish_topic,"2 Flools");   delay(250);
     stepMotorconvert(steps[1]);
-    client.publish(forward_topic,"Forward");  delay(250);
+    //client.publish(forward_topic,"Forward");  delay(250);
+    Serial1.write(forward_topic);
   } else {
     client.publish(error_topic,"Twoflools");
   }   
@@ -238,7 +239,8 @@ void threefloors()
     stepMotorWithLaserMeasurement(steps[1]); delay(250);
     client.publish(finish_topic,"3 Flools"); 
     stepMotorconvert((steps[0] * 2) - steps[1]);
-    client.publish(forward_topic,"Forward"); delay(250);
+    //client.publish(forward_topic,"Forward"); delay(250);
+    Serial1.write(forward_topic);
   } else {
     client.publish(error_topic,"Threeflools");
   }
@@ -258,7 +260,8 @@ void UDFfloors()
     client.publish(finish_topic,"UD Flools");
     digitalWrite(DIR_PIN, LOW);
     stepMotorconvert(steps[0] + steps[1]);      
-    client.publish(forward_topic,"Forward");
+    //client.publish(forward_topic,"Forward");
+    Serial1.write(forward_topic);
   } else {
     client.publish(error_topic,"UDFfloors");
   }
@@ -281,8 +284,13 @@ void test()
 
 void callback(char* topic, byte* payload, unsigned int length) {
   String message;
+  String serialMessage = ""; // ตัวแปรสำหรับเก็บข้อความจาก Serial1
   for (unsigned int i = 0; i < length; i++) {
     message += (char)payload[i];
+  }
+
+  if (Serial1.available() > 0) {
+    serialMessage = Serial1.readString(); // อ่านข้อมูลจาก Serial1 เพียงครั้งเดียว
   }
 
   if (String(topic) == reverse_topic) {
@@ -293,21 +301,23 @@ void callback(char* topic, byte* payload, unsigned int length) {
     char payload[200];
     serializeJson(doc, payload);
 
-  } else if (String(topic) == twofloors_topic) {
-    twoflools();
+  } else if (String(topic) == twofloors_topic || serialMessage == twofloors_topic) { 
+    twofloors();
   
-  } else if (String(topic) == threefloors_topic) {
+  } else if (String(topic) == threefloors_topic || serialMessage == threefloors_topic) { 
     threefloors(); 
-
-  } else if (String(topic) == UDFfloors_topic) {
+  
+  } else if (String(topic) == UDFfloors_topic || serialMessage == UDFfloors_topic) { 
     UDFfloors();
-
-  } else if (String(topic) == test_topic) {
+  
+  } else if (String(topic) == back_topic || serialMessage == back_topic) {
+    client.publish(back_topic,"Back");
+    Serial1.write(back_topic);
+    
+  } else if (String(topic) == test_topic || serialMessage == test_topic) {
     test();
-
-  }   
+  }
 }
-
 /*
 command  1 = open, 2 = measure, 3 = state 4 = close 
 

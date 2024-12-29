@@ -29,8 +29,6 @@ uint16_t packetSize;
 #define DIR_PIN 27  // Direction pin
 #define ENA_PIN 25  // Enable pin
 
-#define RXD1 14  // Adjust as per your wiring7 9tx
-#define TXD1 13  // Adjust as per your wiring5 8rx
 #define RXD2 16
 #define TXD2 17
 
@@ -59,7 +57,6 @@ void mpu_measure(float measure_return[]);
 
 void setup() {
   Serial.begin(115200);
-  Serial1.begin(9600, SERIAL_8N1, RXD1, TXD1);
   Serial2.begin(19200, SERIAL_8N1, RXD2, TXD2);
  
   Wire.begin();
@@ -302,6 +299,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   } else if (String(topic) == UDFfloors_topic) {
     UDFfloors();
 
+  } else if (String(topic) == back_topic) {
+    client.publish(back_topic,"Back");
+    
   } else if (String(topic) == test_topic) {
     test();
 
