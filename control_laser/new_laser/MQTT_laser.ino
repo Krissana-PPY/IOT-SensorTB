@@ -140,16 +140,12 @@ void mpu_setup() {
   }
 }
 
-
 void stepMotorconvert (int steps) {
   for (int i = 0; i < steps; i++) {
     digitalWrite(PUL_PIN, HIGH);  delayMicroseconds(1000);
     digitalWrite(PUL_PIN, LOW);   delayMicroseconds(1000);
   }
 }
-
-
-
 
 void control_stepper_motor(int step[],  float distanceOfmotor) {
   if (distanceOfmotor > 0) {
@@ -184,9 +180,7 @@ void stepMotorWithLaserMeasurement(int steps) {
   }
 }
 
-
-void twoflools()
- {
+void twoflools() {
   int steps[2] = {0, 0}; // steps, step_lasor
   digitalWrite(ENA_PIN, LOW);
   mpu_setup();
@@ -211,9 +205,7 @@ void twoflools()
   }   
 }
 
-
-void threefloors()
- {
+void threefloors() {
   int steps[2] = {0, 0}; // steps, step_lasor
   digitalWrite(ENA_PIN, LOW);
   mpu_setup();   delay(500);
@@ -241,8 +233,7 @@ void threefloors()
   }
 }
 
-void UDFfloors()
- {
+void UDFfloors() {
   int steps[2] = {0, 0}; // steps, step_lasor
   digitalWrite(ENA_PIN, LOW);
   mpu_setup(); delay(500);
@@ -261,8 +252,7 @@ void UDFfloors()
   }
 }
 
-void test()
- {
+void test() {
     int steps[2] = {0, 0}; // steps, step_lasor
     mpu_setup(); delay(500);
     float distanceOfmotor = laser_value(MEASURE);
@@ -316,8 +306,7 @@ return value OK
 
 */
 
-float laser_value(int Command)
-{
+float laser_value(int Command) {
   float value = -100; 
   for(int i = 1; i <= 3; i++)
   {
@@ -343,11 +332,8 @@ float laser_value(int Command)
   return value; 
 }
 
-
 //เปลี่ยนเป็น serial ที่ส่งค่า 
-
-float laser_sensor_function(int Command)
-{
+float laser_sensor_function(int Command) {
  
   String stringOne;
   float return_value = -100; 
@@ -452,6 +438,7 @@ void mpu_measure(float measure_return[]) {
     delay(500);
   }
 }
+
 void loop() {
   if (!client.connected()) {
     reconnect_mqtt();

@@ -183,6 +183,32 @@ void stepMotorWithLaserMeasurement(int steps) {
   }
 }
 
+void start_step_laser() {
+  digitalWrite(DIR_PIN, LOW);
+  stepMotorconvert(steps[1]);
+  digitalWrite(DIR_PIN, HIGH); 
+  stepMotorWithLaserMeasurement(steps[1]);  delay(250);
+}
+
+void waitForNextStep() {
+  String receivedMessage = ""; // สร้างตัวแปรสำหรับเก็บข้อความที่รับมา
+
+  while (true) {
+    // ตรวจสอบว่ามีข้อมูลเข้ามาที่ Serial1
+    if (Serial1.available()) {
+      char receivedChar = Serial1.read(); // อ่านตัวอักษรจาก Serial1
+      receivedMessage += receivedChar;   // เพิ่มตัวอักษรเข้าไปในข้อความที่เก็บไว้
+
+      // ตรวจสอบว่าข้อความที่รับมาตรงกับ "NextStep"
+      if (receivedMessage.endsWith("NextStep")) {
+        Serial.println("Received 'NextStep'!"); // แสดงข้อความยืนยันบน Serial (Serial0)
+        break; // ออกจาก loop
+      }
+    }
+  }
+}
+
+
 void twoflools() {
   int steps[2] = {0, 0}; // steps, step_lasor
   digitalWrite(ENA_PIN, LOW);
@@ -191,24 +217,20 @@ void twoflools() {
   float distanceOfmotor = laser_value(MEASURE);
   if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps[0] * 2);
-    stepMotorWithLaserMeasurement(steps[1]);  delay(250);
-    digitalWrite(DIR_PIN, HIGH); 
+    start_step_laser();
+    Serial1.write(lift_topic);
     client.publish(finish_topic,"1 Flools");   delay(250);
-    stepMotorconvert((steps[0] * 2) + steps[1]);
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorWithLaserMeasurement(steps[1]);   delay(250);
-    digitalWrite(DIR_PIN, HIGH);
+    waitForNextStep();
+    start_step_laser();
     client.publish(finish_topic,"2 Flools");   delay(250);
-    stepMotorconvert(steps[1]);
+    Serial1.write(down_topic);
+    waitForNextStep();
     client.publish(forward_topic,"Forward");  delay(250);
     Serial1.write(forward_topic);
   } else {
     client.publish(error_topic,"Twoflools");
   }   
 }
-
 
 void threefloors() {
   int steps[2] = {0, 0}; // steps, step_lasor
@@ -217,21 +239,20 @@ void threefloors() {
   float distanceOfmotor = laser_value(MEASURE);
   if(distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps[0] * 2);
-    stepMotorWithLaserMeasurement(steps[1]); delay(250);
-    digitalWrite(DIR_PIN, HIGH);
+    start_step_laser();
+    Serial1.write(lift_topic);
     client.publish(finish_topic,"1 Flools");     delay(250);
-    stepMotorconvert((steps[0] * 2) + steps[1]);
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorWithLaserMeasurement(steps[1]);  delay(250);
-    digitalWrite(DIR_PIN, HIGH);
+    waitForNextStep();
+    start_step_laser();
+    Serial1.write(lift_topic);
     client.publish(finish_topic,"2 Flools");     delay(250);
-    stepMotorconvert((steps[0] * 2) + steps[1]);
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorWithLaserMeasurement(steps[1]); delay(250);
+    waitForNextStep();
+    start_step_laser();
     client.publish(finish_topic,"3 Flools"); 
-    stepMotorconvert((steps[0] * 2) - steps[1]);
+    Serial1.write(down_topic);
+    waitForNextStep();
+    Serial1.write(down_topic);
+    waitForNextStep();
     client.publish(forward_topic,"Forward"); delay(250);
     Serial1.write(forward_topic);
   } else {
@@ -246,12 +267,16 @@ void UDFfloors() {
   float distanceOfmotor = laser_value(MEASURE);
   if(distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
-    digitalWrite(DIR_PIN, HIGH);
-    stepMotorconvert(steps[0]);
-    stepMotorWithLaserMeasurement(steps[1]); delay(250);
-    client.publish(finish_topic,"UD Flools");
-    digitalWrite(DIR_PIN, LOW);
-    stepMotorconvert(steps[0] + steps[1]);      
+    Serial1.write(lift_topic);
+    waitForNextStep();
+    Serial1.write(lift_topic);
+    waitForNextStep();
+    start_step_laser();
+    Serial1.write(down_topic);
+    waitForNextStep();
+    Serial1.write(down_topic);
+    client.publish(finish_topic,"UD Flools");  
+    waitForNextStep();
     client.publish(forward_topic,"Forward");
     Serial1.write(forward_topic);
   } else {
@@ -271,7 +296,7 @@ void test() {
     } else {
     client.publish(error_topic,"Test");
     }
- }
+}
 
 void callback(char* topic, byte* payload, unsigned int length) {
   String message;
@@ -304,7 +329,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   } else if (String(topic) == back_topic || serialMessage == back_topic) {
     client.publish(back_topic,"Back");
     Serial1.write(back_topic);
-
+    
   } else if (String(topic) == test_topic || serialMessage == test_topic) {
     test();
   }
@@ -317,7 +342,8 @@ return value OK
 
 */
 
-float laser_value(int Command) {
+float laser_value(int Command)
+{
   float value = -100; 
   for(int i = 1; i <= 3; i++)
   {
