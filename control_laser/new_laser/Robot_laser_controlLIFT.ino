@@ -215,7 +215,14 @@ void twoflools() {
   mpu_setup();
   delay(500);
   float distanceOfmotor = laser_value(MEASURE);
-  if (distanceOfmotor > 0) {
+  if (distanceOfmotor >= 15.00) {
+    control_stepper_motor(steps, distanceOfmotor);
+    start_step_laser();
+    client.publish(finish_topic,"No products.");   delay(250);
+    client.publish(forward_topic,"Forward");  delay(250);
+    Serial1.write(forward_topic);
+    return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
+  } else if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     start_step_laser();
     Serial1.write(lift_topic);
@@ -237,7 +244,14 @@ void threefloors() {
   digitalWrite(ENA_PIN, LOW);
   mpu_setup();   delay(500);
   float distanceOfmotor = laser_value(MEASURE);
-  if(distanceOfmotor > 0) {
+  if (distanceOfmotor >= 15.00) {
+    control_stepper_motor(steps, distanceOfmotor);
+    start_step_laser();
+    client.publish(finish_topic,"No products.");   delay(250);
+    client.publish(forward_topic,"Forward");  delay(250);
+    Serial1.write(forward_topic);
+    return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
+  } else if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     start_step_laser();
     Serial1.write(lift_topic);
@@ -265,7 +279,14 @@ void UDFfloors() {
   digitalWrite(ENA_PIN, LOW);
   mpu_setup(); delay(500);
   float distanceOfmotor = laser_value(MEASURE);
-  if(distanceOfmotor > 0) {
+  if (distanceOfmotor >= 15.00) {
+    control_stepper_motor(steps, distanceOfmotor);
+    start_step_laser();
+    client.publish(finish_topic,"No products.");   delay(250);
+    client.publish(forward_topic,"Forward");  delay(250);
+    Serial1.write(forward_topic);
+    return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
+  } else if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     Serial1.write(lift_topic);
     waitForNextStep();
@@ -342,8 +363,7 @@ return value OK
 
 */
 
-float laser_value(int Command)
-{
+float laser_value(int Command) {
   float value = -100; 
   for(int i = 1; i <= 3; i++)
   {
@@ -407,7 +427,6 @@ float laser_sensor_function(int Command) {
     if (millis() - now > 2000) {
       Serial.println("break");
       break;
-
     }
    }
 
@@ -415,22 +434,21 @@ float laser_sensor_function(int Command) {
    if (stringOne.startsWith(":Er")) { // error 
       return_value =  -1.0;
 
-    }else if(stringOne.indexOf("K") != -1 && (Command == OPEN || Command == CLOSE)) //assume OK message 
+    } else if (stringOne.indexOf("K") != -1 && (Command == OPEN || Command == CLOSE)) //assume OK message 
     {
       return_value = 100;  
-    }
-    else if(stringOne.indexOf("m")  && Command == MEASURE)
+    } else if (stringOne.indexOf("m")  && Command == MEASURE)
     {
       int start = stringOne.indexOf(":") + 1;
       int end = stringOne.indexOf("m");
       String distanceStr = stringOne.substring(start, end);
       return_value = distanceStr.toFloat();
     
-    }else if(Command == STATE)
+    } else if (Command == STATE)
     {
       String distanceStr = stringOne.substring(1, 2);
       return_value = distanceStr.toFloat();
-    }else {
+    } else {
       return_value = 0; //should not return this one. 
     }
   
@@ -459,7 +477,7 @@ bool laser_measure1() {
       success = true; 
     }
     return success; 
-  }
+}
 
   //ลบ comment ออก 
 //  float  rotation =  measure_return[0];
