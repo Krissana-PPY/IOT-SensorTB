@@ -2,11 +2,10 @@
 <html>
 <head>
   <title>STOCK-CHECKING</title>
-  <script src="https://cdn.socket.io/3.1.3/socket.io.min.js"></script>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=PT+Sans&display=swap" rel="stylesheet">
+  <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='fonts/PTSans-Regular.woff2') }}">
   <style>
     body {
       font-family: 'PT Sans', sans-serif;
@@ -17,6 +16,11 @@
       text-align: center;
       margin-top: 50px;
     }
+
+    body {
+      font-family: 'PT Sans', sans-serif;
+    }
+
     
     h1 {
       color: #ffffff;
@@ -31,7 +35,7 @@
     }
 
     .valueDiv {
-      width: 150px;
+      width: 178px;
       text-align: center;
       margin: 15px;
       padding: 10px;
@@ -53,7 +57,7 @@
     }
 
     #c_row_v {
-      font-size: 36px;;
+      font-size: 28px;;
       font-weight: bold;
       color: #FF5733;
     }
@@ -108,11 +112,11 @@
       width: 200px;
     }
 
-    #startButton:hover, #startButton:hover {
+    #startButton:hover, #resultsButton:hover {
       background-color: #45a049;
     }
 
-    #startButton {
+    #startButton, #resultsButton {
       margin-right: 20px; /* เพิ่มระยะห่างทางขวา */
     }
 
@@ -148,6 +152,14 @@
 
   <script>
     var socket = io();
+
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').then(function(registration) {
+      console.log('Service Worker registered with scope:', registration.scope);
+    }).catch(function(error) {
+      console.log('Service Worker registration failed:', error);
+    });
+  }
 
     socket.on('connect', function() {
       console.log('Connected to server');

@@ -5,6 +5,7 @@
 #include "laser_parameter.h"
 #include <ArduinoJson.h>
 #include <MPU6050_6Axis_MotionApps20.h>
+#include <lwip/lwip_napt.h> // ต้องเปิดใช้งาน LWIP NAT ก่อนคอมไพล์
 
 // Declare the MPU6050 object
 MPU6050 mpu;
@@ -47,7 +48,7 @@ PubSubClient client(espClient);
 /* Function Prototypes */
 void reconnect_mqtt();
 void mpu_setup();
-void twoflools();
+void twofloors();
 void threefloors();
 void UDFfloors();
 void stepMotorconvert(int steps);
@@ -152,8 +153,8 @@ void stepMotorconvert (int steps) {
 
 void control_stepper_motor(int step[],  float distanceOfmotor) {
   if (distanceOfmotor > 0) {
-    float angle_rad = atan(0.20 / (distanceOfmotor));
-    float angle_rad_lasor = atan(0.06 / (distanceOfmotor));
+    float angle_rad = atan(0.80 / (distanceOfmotor));
+    float angle_rad_lasor = atan(0.60 / (distanceOfmotor));
     float angle_deg = angle_rad * 180 / M_PI;
     float angle_deg_lasor = angle_rad_lasor * 180 / M_PI;
     step[0] = floor(angle_deg / STEP_ANGLE); // Calculate the number of steps needed // steps 
@@ -183,11 +184,11 @@ void stepMotorWithLaserMeasurement(int steps) {
   }
 }
 
-void start_step_laser() {
+void start_step_laser(int steps) {
   digitalWrite(DIR_PIN, LOW);
-  stepMotorconvert(steps[1]);
+  stepMotorconvert(steps);
   digitalWrite(DIR_PIN, HIGH); 
-  stepMotorWithLaserMeasurement(steps[1]);  delay(250);
+  stepMotorWithLaserMeasurement(steps);  delay(250);
 }
 
 void waitForNextStep() {
@@ -209,7 +210,7 @@ void waitForNextStep() {
 }
 
 
-void twoflools() {
+void twofloors() {
   int steps[2] = {0, 0}; // steps, step_lasor
   digitalWrite(ENA_PIN, LOW);
   mpu_setup();
@@ -217,21 +218,21 @@ void twoflools() {
   float distanceOfmotor = laser_value(MEASURE);
   if (distanceOfmotor >= 15.00) {
     control_stepper_motor(steps, distanceOfmotor);
-    start_step_laser();
+    start_step_laser(steps[1]);
     client.publish(finish_topic,"No products.");   delay(250);
     client.publish(forward_topic,"Forward");  delay(250);
     Serial1.write(forward_topic);
     return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
   } else if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
-    start_step_laser();
+    start_step_laser(steps[1]);
     Serial1.write(lift_topic);
     client.publish(finish_topic,"1 Flools");   delay(250);
-    waitForNextStep();
-    start_step_laser();
+    //waitForNextStep();
+    start_step_laser(steps[1]);
     client.publish(finish_topic,"2 Flools");   delay(250);
     Serial1.write(down_topic);
-    waitForNextStep();
+    //waitForNextStep();
     client.publish(forward_topic,"Forward");  delay(250);
     Serial1.write(forward_topic);
   } else {
@@ -246,27 +247,27 @@ void threefloors() {
   float distanceOfmotor = laser_value(MEASURE);
   if (distanceOfmotor >= 15.00) {
     control_stepper_motor(steps, distanceOfmotor);
-    start_step_laser();
+    start_step_laser(steps[1]);
     client.publish(finish_topic,"No products.");   delay(250);
     client.publish(forward_topic,"Forward");  delay(250);
     Serial1.write(forward_topic);
     return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
   } else if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
-    start_step_laser();
+    start_step_laser(steps[1]);
     Serial1.write(lift_topic);
     client.publish(finish_topic,"1 Flools");     delay(250);
-    waitForNextStep();
-    start_step_laser();
+    //waitForNextStep();
+    start_step_laser(steps[1]);
     Serial1.write(lift_topic);
     client.publish(finish_topic,"2 Flools");     delay(250);
-    waitForNextStep();
-    start_step_laser();
+    //waitForNextStep();
+    start_step_laser(steps[1]);
     client.publish(finish_topic,"3 Flools"); 
     Serial1.write(down_topic);
-    waitForNextStep();
+    //waitForNextStep();
     Serial1.write(down_topic);
-    waitForNextStep();
+    //waitForNextStep();
     client.publish(forward_topic,"Forward"); delay(250);
     Serial1.write(forward_topic);
   } else {
@@ -281,7 +282,7 @@ void UDFfloors() {
   float distanceOfmotor = laser_value(MEASURE);
   if (distanceOfmotor >= 15.00) {
     control_stepper_motor(steps, distanceOfmotor);
-    start_step_laser();
+    start_step_laser(steps[1]);
     client.publish(finish_topic,"No products.");   delay(250);
     client.publish(forward_topic,"Forward");  delay(250);
     Serial1.write(forward_topic);
@@ -289,15 +290,15 @@ void UDFfloors() {
   } else if (distanceOfmotor > 0) {
     control_stepper_motor(steps, distanceOfmotor);
     Serial1.write(lift_topic);
-    waitForNextStep();
+    //waitForNextStep();
     Serial1.write(lift_topic);
-    waitForNextStep();
-    start_step_laser();
+    //waitForNextStep();
+    start_step_laser(steps[1]);
     Serial1.write(down_topic);
-    waitForNextStep();
+    //waitForNextStep();
     Serial1.write(down_topic);
     client.publish(finish_topic,"UD Flools");  
-    waitForNextStep();
+    //waitForNextStep();
     client.publish(forward_topic,"Forward");
     Serial1.write(forward_topic);
   } else {
@@ -329,16 +330,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (Serial1.available() > 0) {
     serialMessage = Serial1.readString(); // อ่านข้อมูลจาก Serial1 เพียงครั้งเดียว
   }
-
-  if (String(topic) == reverse_topic) {
-    StaticJsonDocument<200> doc;
-    doc["rotation"] = "-1";
-    doc["facing_up"] = "-1";
-    doc["distance"] = "-1";
-    char payload[200];
-    serializeJson(doc, payload);
-
-  } else if (String(topic) == twofloors_topic || serialMessage == twofloors_topic) { 
+  if (String(topic) == twofloors_topic || serialMessage == twofloors_topic) { 
     twofloors();
   
   } else if (String(topic) == threefloors_topic || serialMessage == threefloors_topic) { 
@@ -348,6 +340,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
     UDFfloors();
   
   } else if (String(topic) == back_topic || serialMessage == back_topic) {
+    StaticJsonDocument<200> doc;
+    doc["rotation"] = "-1";
+    doc["facing_up"] = "-1";
+    doc["distance"] = "-1";
+    char payload[200];
+    serializeJson(doc, payload);
     client.publish(back_topic,"Back");
     Serial1.write(back_topic);
     
@@ -403,7 +401,6 @@ float laser_sensor_function(int Command) {
       break;
     case MEASURE:
       Serial2.write("D");
-      Serial2.write("O");
       break;
     case STATE:
       Serial2.write("S");
@@ -476,6 +473,7 @@ bool laser_measure1() {
       client.publish(mqtt_topic, payload);
       success = true; 
     }
+    laser_value(OPEN);
     return success; 
 }
 

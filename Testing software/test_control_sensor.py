@@ -28,7 +28,7 @@ def send_command():
         '3F': '3F',
         'UDF': 'UDF',
         'left': 'NEXT_ROW',
-        'right': 'Revert',
+        'right': 'B',
         'up': 'NEXT_ZONE'
     }
     

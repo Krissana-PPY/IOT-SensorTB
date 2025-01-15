@@ -16,7 +16,7 @@ pallet_NO = 1
 count_number_pallet = 1
 count_number_ID = 1
 check = True
-MAX_RANGE = 2  # meters
+MAX_RANGE = 15  # meters
 
 # List of pallets identifiers
 def generate_pallet_name(count_number_ID, count_number_pallet):
@@ -90,7 +90,7 @@ def collected_data(input_str):
 
 # Calculates the number of pallets based on the distance measure
 def cal_pallet(distance_measure):
-    pallet = math.floor((MAX_RANGE - distance_measure) / 0.24)
+    pallet = math.floor((MAX_RANGE - distance_measure) / 1.215)
     print(pallet)
     each_pallet.append(pallet)
     return pallet
@@ -132,8 +132,7 @@ def send_EACH_PALLET(row_name, pallet_no, distance, angle_x, angle_y):
             date = current_time.strftime("%Y-%m-%d")
             cur = connection.cursor()
             cur.execute("""
-                INSERT INTO ROW_EACH_PALLET (ROW_ID, PALLET_NO, DISTANCE, ANGLE_X, ANGLE_Y, UPDATE_DATE) 
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO ROW_EACH_PALLET (ROW_ID, PALLET_NO, DISTANCE, ANGLE_X, ANGLE_Y, UPDATE_DATE) VALUES (%s, %s, %s, %s, %s, %s)
                 """, (row_name, pallet_no, distance, angle_x, angle_y, date))
             connection.commit()
             print("Insert data")
@@ -173,17 +172,15 @@ def send_DELETE(row_name):
         if connection and connection.is_connected():
             connection.close()
 
-def send_STOCK(row_name):
+def send_ROW_ID(row_name):
     try:
         connection = get_db_connection()
         if connection and connection.is_connected():
             current_time = datetime.now()
             date = current_time.strftime("%Y-%m-%d") 
             cur = connection.cursor()
-            cur.execute("""
-                INSERT INTO STOCK (ROW_ID, UPDATE_DATE) 
-                VALUES (%s, %s)
-                """, (row_name, date))
+            cur.execute("INSERT INTO STOCK (ROW_ID, UPDATE_DATE) VALUES (%s, %s)", (row_name, date))
+            cur.execute("INSERT INTO ROW_PALLET (ROW_ID, UPDATE_DATE) VALUES (%s, %s)", (row_name, date))
             connection.commit()
             print("Insert data")
             cur.close()
@@ -224,10 +221,14 @@ def send_ROW_PALLET(row_name, pallet_no, each_pallet):
             current_time = datetime.now()
             date = current_time.strftime("%Y-%m-%d")             
             cur = connection.cursor()
-            cur.execute("""
-                INSERT INTO ROW_PALLET (ROW_ID, PALLET_NO, EACH_PALLET, UPDATE_DATE ) 
-                VALUES (%s, %s, %s, %s)
+            if pallet_NO > 1 :
+                cur.execute("""
+                INSERT INTO ROW_PALLET (ROW_ID, PALLET_NO, EACH_PALLET, UPDATE_DATE) VALUES (%s, %s, %s, %s)
                 """, (row_name, pallet_no, each_pallet, date))
+            else :
+                cur.execute("""
+                UPDATE ROW_PALLET SET PALLET_NO = %s, EACH_PALLET = %s WHERE ROW_ID = %s AND UPDATE_DATE = %s
+                """, (pallet_no, each_pallet, row_name, date))
             connection.commit()
             print("Insert data")
             cur.close()
@@ -256,7 +257,7 @@ def handle_mqtt_message(client, userdata, message):
 
     if message.topic == "measure":
         if check == True :
-            send_STOCK(show_pallet(count_number_ID,count_number_pallet))
+            send_ROW_ID(show_pallet(count_number_ID,count_number_pallet))
         check = False
         # Collect data from the message payload
         collected_data(msg)
@@ -308,10 +309,10 @@ def handle_mqtt_message(client, userdata, message):
         socketio.emit('send_c_row', send_c_row(show_pallet(count_number_ID,count_number_pallet)), namespace='/')
         socketio.emit('set_point_zero', send_point_zero(), namespace='/')
 
-    elif message.topic == "Revert":
+    elif message.topic == "B":
         # Go back to the previous pallet and delete data from the database
         send_DELETE(show_pallet(count_number_ID,count_number_pallet))
-        pallet_NO = 1 #######################################################################################
+        pallet_NO -= 1 #######################################################################################
         if count_number_pallet == 1 :
             count_number_ID = reset_to_one(count_number_ID - 1)
         count_number_pallet = reset_to_one(count_number_pallet - 1)
