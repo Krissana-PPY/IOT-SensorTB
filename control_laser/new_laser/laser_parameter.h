@@ -17,6 +17,7 @@ const char* forward_topic = "F";
 const char* back_topic = "B";
 const char* lift_topic = "L35";
 const char* down_topic = "D35";
+const char* done_topic = "done";
 // Robot Box
 const char* twofloors_topic = "2F";
 const char* threefloors_topic = "3F";

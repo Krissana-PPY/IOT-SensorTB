@@ -5,6 +5,9 @@ import math
 import re
 from datetime import datetime
 import mysql.connector
+from mysql.connector import Error
+from contextlib import contextmanager
+import logging
 
 # Global Variables to store sensor data and results
 distance = []
@@ -111,6 +114,9 @@ def sum_pallet():
     return sum(math.floor(p) for p in each_pallet)
 
 # MySQL Functions to interact with the database
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def get_db_connection():
     try:
         connection = mysql.connector.connect(
@@ -119,128 +125,84 @@ def get_db_connection():
             password=app.config['MYSQL_PASSWORD'],
             database=app.config['MYSQL_DB']
         )
-        return connection
-    except mysql.connector.Error as err:
-        print(f"Error: {err}")
-        return None
-
-def send_EACH_PALLET(row_name, pallet_no, distance, angle_x, angle_y):
-    try:
-        connection = get_db_connection()
-        if connection and connection.is_connected():
-            current_time = datetime.now()
-            date = current_time.strftime("%Y-%m-%d")
-            cur = connection.cursor()
-            cur.execute("""
-                INSERT INTO ROW_EACH_PALLET (ROW_ID, PALLET_NO, DISTANCE, ANGLE_X, ANGLE_Y, UPDATE_DATE) VALUES (%s, %s, %s, %s, %s, %s)
-                """, (row_name, pallet_no, distance, angle_x, angle_y, date))
-            connection.commit()
-            print("Insert data")
-            cur.close()
-    except mysql.connector.Error as err:
-        print(f"Database error: {err}")
-        return "error"
-    except Exception as e:
-        print(f"Error: {e}")
-        return "error" 
+        yield connection
+    except Error as err:
+        logging.error(f"Database connection error: {err}")
+        yield None
     finally:
-        if connection and connection.is_connected():
+        if 'connection' in locals() and connection and connection.is_connected():
             connection.close()
+
+def execute_query(query, params=None, fetch=False):
+    try:
+        with get_db_connection() as connection:
+            if connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(query, params)
+                    if fetch:
+                        return cursor.fetchall()
+                    connection.commit()
+    except Error as err:
+        logging.error(f"Database query error: {err}")
+        return None
+    
+def send_EACH_PALLET(row_name, pallet_no, distance, angle_x, angle_y):
+    date = datetime.now().strftime("%Y-%m-%d")
+    query = """
+        INSERT INTO ROW_EACH_PALLET 
+        (ROW_ID, PALLET_NO, DISTANCE, ANGLE_X, ANGLE_Y, UPDATE_DATE) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """
+    execute_query(query, (row_name, pallet_no, distance, angle_x, angle_y, date))
+    logging.info("Inserted ROW_EACH_PALLET data")
 
 def send_DELETE(row_name):
-    try:
-        connection = get_db_connection()
-        if connection and connection.is_connected():
-            cur = connection.cursor()
-            current_time = datetime.now()
-            date = current_time.strftime("%Y-%m-%d")
-
-            # Check existence before delete
-            cur.execute("DELETE FROM ROW_EACH_PALLET WHERE ROW_ID = %s AND UPDATE_DATE = %s", (row_name, date))
-            cur.execute("DELETE FROM ROW_PALLET WHERE ROW_ID = %s AND UPDATE_DATE = %s", (row_name, date))
-            cur.execute("DELETE FROM STOCK WHERE ROW_ID = %s AND UPDATE_DATE = %s", (row_name, date))
-            connection.commit()
-
-            cur.close()
-    except mysql.connector.Error as err:
-        print(f"Database error: {err}")
-        return "error"
-    except Exception as e:
-        print(f"Error: {e}")
-        return "error"
-    finally:
-        if connection and connection.is_connected():
-            connection.close()
+    date = datetime.now().strftime("%Y-%m-%d")
+    queries = [
+        "DELETE FROM ROW_EACH_PALLET WHERE ROW_ID = %s AND UPDATE_DATE = %s",
+        "DELETE FROM ROW_PALLET WHERE ROW_ID = %s AND UPDATE_DATE = %s",
+        "DELETE FROM STOCK WHERE ROW_ID = %s AND UPDATE_DATE = %s"
+    ]
+    for query in queries:
+        execute_query(query, (row_name, date))
+    logging.info(f"Deleted data for ROW_ID: {row_name}")
 
 def send_ROW_ID(row_name):
-    try:
-        connection = get_db_connection()
-        if connection and connection.is_connected():
-            current_time = datetime.now()
-            date = current_time.strftime("%Y-%m-%d") 
-            cur = connection.cursor()
-            cur.execute("INSERT INTO STOCK (ROW_ID, UPDATE_DATE) VALUES (%s, %s)", (row_name, date))
-            cur.execute("INSERT INTO ROW_PALLET (ROW_ID, UPDATE_DATE) VALUES (%s, %s)", (row_name, date))
-            connection.commit()
-            print("Insert data")
-            cur.close()
-    except mysql.connector.Error as err:
-        print(f"Database error: {err}")
-        return "error"
-    except Exception as e:
-        print(f"Error: {e}")
-        return "error"
-    finally:
-        if connection and connection.is_connected():
-            connection.close()
+    date = datetime.now().strftime("%Y-%m-%d")
+    queries = [
+        "INSERT INTO STOCK (ROW_ID, UPDATE_DATE) VALUES (%s, %s)",
+        "INSERT INTO ROW_PALLET (ROW_ID, UPDATE_DATE) VALUES (%s, %s)"
+    ]
+    for query in queries:
+        execute_query(query, (row_name, date))
+    logging.info(f"Inserted ROW_ID data: {row_name}")
+
 def send_STOCK_UPDATE(row_name,pallet):
-    try:
-        connection = get_db_connection()
-        if connection and connection.is_connected():
-            current_time = datetime.now()
-            cur = connection.cursor()
-            date = current_time.strftime("%Y-%m-%d")
-            cur.execute("UPDATE STOCK SET PALLET = %s WHERE ROW_ID = %s AND UPDATE_DATE = %s",(pallet, row_name, date))
-            connection.commit()
-            print("Update data")
-            cur.close()
-    except mysql.connector.Error as err:
-        print(f"Database error: {err}")
-        return "error"
-    except Exception as e:
-        print(f"Error: {e}")
-        return "error"
-    finally:
-        if connection and connection.is_connected():
-            connection.close()
+    query = """
+        UPDATE STOCK 
+        SET PALLET = %s 
+        WHERE ROW_ID = %s AND UPDATE_DATE = %s
+    """
+    date = datetime.now().strftime("%Y-%m-%d")
+    execute_query(query, (pallet, row_name, date))
+    logging.info(f"Updated STOCK for ROW_ID: {row_name}")
 
 def send_ROW_PALLET(row_name, pallet_no, each_pallet):
-    try:
-        connection = get_db_connection()
-        if connection and connection.is_connected():
-            current_time = datetime.now()
-            date = current_time.strftime("%Y-%m-%d")             
-            cur = connection.cursor()
-            if pallet_NO > 1 :
-                cur.execute("""
-                INSERT INTO ROW_PALLET (ROW_ID, PALLET_NO, EACH_PALLET, UPDATE_DATE) VALUES (%s, %s, %s, %s)
-                """, (row_name, pallet_no, each_pallet, date))
-            else :
-                cur.execute("""
-                UPDATE ROW_PALLET SET PALLET_NO = %s, EACH_PALLET = %s WHERE ROW_ID = %s AND UPDATE_DATE = %s
-                """, (pallet_no, each_pallet, row_name, date))
-            connection.commit()
-            print("Insert data")
-            cur.close()
-    except mysql.connector.Error as err:
-        print(f"Database error: {err}")
-        return "error"
-    except Exception as e:
-        print(f"Error: {e}")
-        return "error"
-    finally:
-        if connection and connection.is_connected():
-            connection.close()
+    date = datetime.now().strftime("%Y-%m-%d")
+    if pallet_no > 1:
+        query = """
+            INSERT INTO ROW_PALLET 
+            (ROW_ID, PALLET_NO, EACH_PALLET, UPDATE_DATE) 
+            VALUES (%s, %s, %s, %s)
+        """
+    else:
+        query = """
+            UPDATE ROW_PALLET 
+            SET PALLET_NO = %s, EACH_PALLET = %s 
+            WHERE ROW_ID = %s AND UPDATE_DATE = %s
+        """
+    execute_query(query, (row_name, pallet_no, each_pallet, date))
+    logging.info(f"Processed ROW_PALLET for ROW_ID: {row_name}")
      
 # MQTT Handlers to process incoming messages
 @mqtt.on_connect()
@@ -348,4 +310,4 @@ def index():
     return render_template("index.html")
 
 if __name__ == "__main__":
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
