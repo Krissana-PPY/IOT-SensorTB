@@ -35,6 +35,7 @@ def create_app():
     app.config['MYSQL_HOST'] = 'localhost'
     app.config['MYSQL_USER'] = 'root'
     app.config['MYSQL_PASSWORD'] = '1234'
+    #app.config['MYSQL_PASSWORD'] = 'admintbl'
     app.config['MYSQL_DB'] = 'mydb'
     
     return app
@@ -117,6 +118,7 @@ def sum_pallet():
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+@contextmanager
 def get_db_connection():
     try:
         connection = mysql.connector.connect(
@@ -195,13 +197,14 @@ def send_ROW_PALLET(row_name, pallet_no, each_pallet):
             (ROW_ID, PALLET_NO, EACH_PALLET, UPDATE_DATE) 
             VALUES (%s, %s, %s, %s)
         """
+        execute_query(query, (row_name, pallet_no, each_pallet, date))
     else:
         query = """
             UPDATE ROW_PALLET 
             SET PALLET_NO = %s, EACH_PALLET = %s 
             WHERE ROW_ID = %s AND UPDATE_DATE = %s
         """
-    execute_query(query, (row_name, pallet_no, each_pallet, date))
+        execute_query(query, (pallet_no, each_pallet, row_name, date))
     logging.info(f"Processed ROW_PALLET for ROW_ID: {row_name}")
      
 # MQTT Handlers to process incoming messages
@@ -232,10 +235,10 @@ def handle_mqtt_message(client, userdata, message):
         average_distance = calculate_average_distance()
         # Calculate number of pallets based on the average distance
         cal_pallet(average_distance)    
-        print("each_pallet = ", each_pallet)
-        point_events = {i: f'send_point_{i}' for i in range(1, len(each_pallet) + 1)}
-        if len(each_pallet) in point_events:
-            socketio.emit(point_events[len(each_pallet)], send_point_to_web(each_pallet[-1]), namespace='/')
+        for i in range(1, len(each_pallet) + 1):
+            event_name = f'send_point_{i}'
+            data = send_point_to_web(each_pallet[i - 1])  # ส่งข้อมูลของพาเลทที่เกี่ยวข้อง
+            socketio.emit(event_name, data, namespace='/')
         
         # Store the last measurement in the database
         send_ROW_PALLET(show_pallet(count_number_ID,count_number_pallet), pallet_NO, each_pallet[-1])

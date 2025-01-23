@@ -14,6 +14,21 @@ app.config['MQTT_TLS_ENABLED'] = False  # Set to True if your broker supports TL
 
 mqtt = Mqtt(app, connect_async=True)
 
+@mqtt.on_connect()
+def handle_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print("Connected to MQTT Broker!")
+    else:
+        print(f"Failed to connect, return code {rc}")
+
+@mqtt.on_disconnect()
+def handle_disconnect(client, userdata, rc):
+    print("Disconnected from MQTT Broker")
+
+@mqtt.on_log()
+def handle_logging(client, userdata, level, buf):
+    print(f"Log: {buf}")
+
 @app.route('/')
 def index():
     return render_template('test_control_sensor.html')
