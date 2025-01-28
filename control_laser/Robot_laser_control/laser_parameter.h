@@ -1,6 +1,6 @@
 // WiFi STA (เชื่อมต่อ WiFi โรงงาน)
-const char* ssid_STA = "kku-wifi@robot";
-const char* password_STA = "1q2w3e4r5t@robot";
+//const char* ssid_STA = "ESP32-AccessPoint";
+//const char* password_STA = "123456789";
 
 // WiFi AP (ปล่อย WiFi ให้ Pi4)
 const char* ssid_AP = "ESP32-Access-Point";

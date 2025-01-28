@@ -146,8 +146,6 @@
       </div>
     </div>
     <p id="state" class="state">State: wait for connection...</p>
-    <button id="startButton">START</button>
-    <button id="resultsButton">RESULTS</button>
   </div>
 
   <script>
@@ -264,16 +262,6 @@
     function update_row(row) {
       $('#row_v').text(row);
     }
-    
-    $('#startButton').on('click', function() {
-      console.log('START button clicked');
-      socket.emit('start_process');
-    });
-
-    $('#resultsButton').on('click', function() {
-      console.log('RESULTS button clicked');
-      socket.emit('results_process');
-    });
 
   </script>
 </body>

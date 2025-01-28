@@ -4,7 +4,7 @@ After=network.target graphical-session.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/tbl/IOT-SenserTB/start_services.sh
+ExecStart=/home/tbl/IOT-SenserTB/scrip/start_services.sh
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/tbl/.Xauthority
 Restart=on-failure

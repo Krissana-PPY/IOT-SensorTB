@@ -5,7 +5,6 @@
 #include "laser_parameter.h"
 #include <ArduinoJson.h>
 #include <MPU6050_6Axis_MotionApps20.h>
-#include <lwip/lwip_napt.h> // ต้องเปิดใช้งาน LWIP NAT ก่อนคอมไพล์
 
 // Declare the MPU6050 object
 MPU6050 mpu;
@@ -55,7 +54,7 @@ void step_motor_withLaser_measurement(int steps);
 void start_step_laser(int steps, int Logic1, int Logic2);
 void move_motor_start(int Logic);
 void control_logic_motor(int steps, float distanceOfmotor);
-void waitForTopic(const char* done_topic);
+void waitForTopic(const char* done_topic, const char* topic);
 void test();
 void callback(char* topic, byte* payload, unsigned int length);
 float laser_value(int Command);
@@ -72,7 +71,7 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000);
     // ตั้งค่า STA Mode
-  WiFi.mode(WIFI_MODE_APSTA);
+  /*WiFi.mode(WIFI_MODE_APSTA);
   WiFi.begin(ssid_STA, password_STA);
   Serial.println("Connecting to WiFi as STA...");
   while (WiFi.status() != WL_CONNECTED) {
@@ -81,7 +80,7 @@ void setup() {
   }
   Serial.println("\nConnected to WiFi (STA)");
   Serial.print("STA IP Address: ");
-  Serial.println(WiFi.localIP());
+  Serial.println(WiFi.localIP());*/
 
   // ตั้งค่า AP Mode
   WiFi.softAP(ssid_AP, password_AP);
@@ -90,7 +89,7 @@ void setup() {
   Serial.println(WiFi.softAPIP());
 
   // เปิด NAT Routing
-  setupNAT();
+  //setupNAT();
 
   client.setServer(mqtt_broker, 1883);
   client.setCallback(callback);
@@ -104,11 +103,11 @@ void setup() {
   digitalWrite(ENA_PIN, LOW); // Enable the driver
 }
 
-void setupNAT() {
+/*void setupNAT() {
   // เปิด NAT
   ip_napt_enable(WiFi.softAPIP(), 1);
   Serial.println("NAT Routing enabled");
-}
+}*/
 
 void reconnect_mqtt() {
   while (!client.connected()) {
@@ -201,7 +200,7 @@ void start_step_laser(int steps, int Logic1, int Logic2) {
 void move_motor_start(int Logic) {
   float degree = atan(1.6 / 15);
   int steps = floor(degree / STEP_ANGLE); // 5.71 คือ ค่ามุมที่ต้องการให้มอเตอร์หมุน
-  digitalWrite(ENA_PIN, Logic);
+  digitalWrite(DIR_PIN, Logic);
   step_motor_move(steps);
 }
 
@@ -213,7 +212,7 @@ void control_logic_motor(int steps, float distanceOfmotor) {
   }
 }
 
-void waitForTopic(const char* done_topic) {
+void waitForTopic(const char* done_topic, const char* topic) {
   while (true) {
     client.loop();
     if (client.connected()) {
@@ -231,8 +230,8 @@ void twofloors() {
   digitalWrite(ENA_PIN, LOW);
   mpu_setup();  delay(500);
   move_motor_start(LOW);
-  float distanceOfmotor = laser_value(MEASURE);
-  distanceOfmotor = distanceOfmotor * cos(atan(1.6 / 15));
+  float distanceOfstart = laser_value(MEASURE);
+  float distanceOfmotor = distanceOfstart * cos(atan(1.6 / 15));
   control_stepper_motor(steps, distanceOfmotor);
   if (distanceOfmotor >= 14.40) {
     control_logic_motor(steps[1], distanceOfmotor);
@@ -240,16 +239,22 @@ void twofloors() {
     move_motor_start(HIGH);
     client.publish(forward_topic,"Forward");  delay(250);
     return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
-  } else if (distanceOfmotor > 0) {
+
+  } else if (distanceOfmotor > 0 && distanceOfmotor < 14.40) {
     control_logic_motor(steps[1], distanceOfmotor);
     move_motor_start(HIGH);
-    client.publish(lift_topic,"UP");  delay(250);
+    //client.publish(lift_topic,"UP");  delay(250);
     client.publish(finish_topic,"1 Flools");   delay(250);
-    waitForTopic(done_topic);
-    start_step_laser(steps[1], LOW, HIGH);
-    client.publish(down_topic,"Down");  delay(250);
+    //waitForTopic(done_topic, done_topic);
+
+    digitalWrite(DIR_PIN, HIGH);
+    step_motor_move(steps[1]);
+    start_step_laser(steps[1], HIGH, LOW);
+    digitalWrite(DIR_PIN, LOW);
+    step_motor_move(steps[1]);
+    //client.publish(down_topic,"Down");  delay(250);
     client.publish(finish_topic,"2 Flools");   delay(250);
-    waitForTopic(done_topic);
+    //waitForTopic(done_topic, done_topic);
     client.publish(forward_topic,"Forward");  delay(250);
   } else {
     client.publish(error_topic,"Twoflools");
@@ -275,7 +280,7 @@ void threefloors() {
     move_motor_start(HIGH);
     client.publish(lift_topic,"UP");  delay(250);
     client.publish(finish_topic,"1 Flools");   delay(250);
-    waitForTopic(done_topic);
+    waitForTopic(done_topic, done_topic);
     start_step_laser(steps[1], LOW, HIGH);
     client.publish(finish_topic,"2 Flools");   delay(250);
     digitalWrite(DIR_PIN, HIGH); 
@@ -285,7 +290,7 @@ void threefloors() {
     step_motor_move(222);
     client.publish(down_topic,"Down");  delay(250);
     client.publish(finish_topic,"3 Flools");   delay(250);
-    waitForTopic(done_topic);
+    waitForTopic(done_topic, done_topic);
     client.publish(forward_topic,"Forward"); delay(250);
   } else {
     client.publish(error_topic,"Threeflools");
@@ -305,7 +310,7 @@ void UDFfloors() {
     client.publish(down_topic,"Down");  delay(250);
     digitalWrite(DIR_PIN, LOW); 
     step_motor_move(222);
-    waitForTopic(done_topic);
+    waitForTopic(done_topic, done_topic);
     client.publish(forward_topic,"Forward");  delay(250);
     return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
   } else if (distanceOfmotor > 0) {
@@ -315,7 +320,7 @@ void UDFfloors() {
     client.publish(down_topic,"Down");  delay(250);
     digitalWrite(DIR_PIN, LOW);
     step_motor_move(222);
-    waitForTopic(done_topic);
+    waitForTopic(done_topic, done_topic);
     client.publish(forward_topic,"Forward");
   } else {
     client.publish(error_topic,"UDFfloors");
@@ -483,7 +488,7 @@ bool laser_measure1() {
       client.publish(mqtt_topic, payload);
       success = true; 
     }
-    laser_value(OPEN);
+    Serial2.write("O");
     return success; 
 }
 

@@ -44,7 +44,7 @@ app = create_app()
 socketio = SocketIO(app)
 
 # MQTT Configuration
-app.config['MQTT_BROKER_URL'] = '192.168.4.100'
+app.config['MQTT_BROKER_URL'] = '192.168.50.94'
 app.config['MQTT_BROKER_PORT'] = 1883
 app.config['MQTT_USERNAME'] = ''
 app.config['MQTT_PASSWORD'] = ''
@@ -281,7 +281,6 @@ def handle_mqtt_message(client, userdata, message):
         if count_number_pallet == 1 :
             count_number_ID = reset_to_one(count_number_ID - 1)
         count_number_pallet = reset_to_one(count_number_pallet - 1)
-        send_DELETE(show_pallet(count_number_ID,count_number_pallet))
         print(show_pallet(count_number_ID,count_number_pallet))
         check = True
         distance.clear()
