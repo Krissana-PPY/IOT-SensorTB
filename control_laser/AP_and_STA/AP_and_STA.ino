@@ -1,18 +1,23 @@
 #include <WiFi.h>
+#include <esp_wifi.h>
+#include <esp_netif.h>
+#include <lwip/lwip_napt.h>
+#include <lwip/tcpip.h> // รวมไฟล์เพื่อใช้ tcpip_callback
 
 // Replace with your network credentials
-//const char* ssid = "kku-wifi@robot";
-//const char* password = "1q2w3e4r5t@robot";
+const char* ssid = "kku-wifi@robot";
+const char* password = "1q2w3e4r5t@robot";
 
 // Access Point credentials
-const char* ap_ssid = "ESP32-AccessPoint";
+const char* ap_ssid = "ESP32-Access-Point";
 const char* ap_password = "123456789";
 
-//#define IP_PROTO_TCP 6
-//#define IP_PROTO_UDP 17
+// Define protocol constants
+#define IP_PROTO_TCP 6
+#define IP_PROTO_UDP 17
 
 // Callback function for enabling NAT
-/*void enableNAT(void* arg) {
+void enableNAT(void* arg) {
   // Enable NAT
   ip_napt_enable(WiFi.softAPIP(), 1);
   Serial.println("NAT Routing enabled");
@@ -31,23 +36,13 @@ const char* ap_password = "123456789";
   ip_portmap_add(IP_PROTO_UDP, ap_ip_u32, 0, sta_ip_u32, 0);
 
   Serial.println("NAT rules configured");
-}*/
-
-void onNewClientConnected(arduino_event_id_t event, arduino_event_info_t info) {
-  Serial.print("New device connected: ");
-  Serial.print("MAC: ");
-  char macStr[18];
-  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-           info.wifi_ap_staconnected.mac[0], info.wifi_ap_staconnected.mac[1], info.wifi_ap_staconnected.mac[2],
-           info.wifi_ap_staconnected.mac[3], info.wifi_ap_staconnected.mac[4], info.wifi_ap_staconnected.mac[5]);
-  Serial.println(macStr);
 }
 
 void setup() {
   Serial.begin(115200);
 
   // Connect to Wi-Fi network in Station mode
-  /*Serial.print("Connecting to ");
+  Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
 
@@ -59,7 +54,7 @@ void setup() {
   // Print Station IP Address
   Serial.println("Connected to WiFi");
   Serial.print("STA IP Address: ");
-  Serial.println(WiFi.localIP());*/
+  Serial.println(WiFi.localIP());
 
   // Configure Access Point
   WiFi.softAP(ap_ssid, ap_password);
@@ -68,11 +63,8 @@ void setup() {
   Serial.print("AP IP Address: ");
   Serial.println(WiFi.softAPIP());
 
-  // Register event handler for new client connections
-  WiFi.onEvent(onNewClientConnected, ARDUINO_EVENT_WIFI_AP_STACONNECTED);
-
   // Use tcpip_callback to safely enable NAT
-  //tcpip_callback(enableNAT, NULL);
+  tcpip_callback(enableNAT, NULL);
 }
 
 void loop() {
