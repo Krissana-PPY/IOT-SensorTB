@@ -311,5 +311,18 @@ def handle_message(message):
 def index():
     return render_template("index.html")
 
+@app.route("/test_control_sensor.html")
+def test_control_sensor():
+    return render_template("test_control_sensor.html")
+
+@app.route('/send_command', methods=['POST'])
+def send_command():
+    data = request.get_json()
+    topic = data.get('topic')
+    if topic:
+        mqtt.publish(topic, '')
+        return jsonify({'status': 'success'}), 200
+    return jsonify({'status': 'error', 'message': 'Invalid topic'}), 400
+
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)

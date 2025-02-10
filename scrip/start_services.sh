@@ -1,6 +1,6 @@
 #!/bin/bash
 # รัน Flask App
-python3 /home/tbl/IOT-SenserTB/flask_app.py &
+python3 /home/tbl/IOT-SensorTB/flask_app.py &
 
 # รอให้ Flask เริ่มต้นทำงาน (3 วินาที)
 sleep 3
