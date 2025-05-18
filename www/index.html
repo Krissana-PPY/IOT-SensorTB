@@ -4,8 +4,6 @@
   <title>STOCK-CHECKING</title>
   <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='fonts/PTSans-Regular.woff2') }}">
   <style>
     body {
       font-family: 'PT Sans', sans-serif;
@@ -143,21 +141,26 @@
     <h1>STOCK-CHECKING</h1>
     <div class="sensorDiv">
       <div class="valueDiv">
-        <p><span id="c_row_v">Current Row</span></p>
+        <!--ชื่อและรหัสพาเลท-->
+        <p><span id="c_row_v">Current Row</span></p> 
       </div>
     </div>
     <div class="pointGroupDiv">
+      <!--ผลลัพธ์แต่ละพาเลท-->
       <div class="point" id="point_1"><span>Point 1<span></div>
       <div class="point" id="point_2"><span>Point 2<span></div>
       <div class="point" id="point_3"><span>Point 3<span></div>
       <div class="point" id="point_4"><span>Point 4<span></div>
       <div class="point" id="point_5"><span>Point 5<span></div>
+      <div class="point" id="point_6"><span>Point 6<span></div>
     </div>
     <div class="sensorDiv">
       <div class="valueDiv">
+        <!--ชื่อและรหัสพาเลทก่อนหน้า-->
         <p><span id="row_v">Row</span></p>
       </div>
       <div class="valueDiv">
+        <!--ผลรวมจำนวนพาเลท-->
         <p><span id="pallet_v">pallet</span></p>
       </div>
     </div>
@@ -239,6 +242,14 @@
       $('#point_5').text(point + ' PL.');
     }
 
+    socket.on('send_point_6', function(data) {
+      update_P6(data.point);
+    });
+
+    function update_P6(point) {
+      $('#point_6').text(point + ' PL.');
+    }
+
     socket.on('set_zero', function(data) {
       updateSensorData(data.pallet_v ,data.point);
     });
@@ -250,6 +261,7 @@
       $('#point_3').text(point + ' PL.');
       $('#point_4').text(point + ' PL.');
       $('#point_5').text(point + ' PL.');
+      $('#point_6').text(point + ' PL.');
     }
 
     socket.on('send_c_row', function(data) {
@@ -270,6 +282,7 @@
       $('#point_3').text(point + 'PL.');
       $('#point_4').text(point + 'PL.');
       $('#point_5').text(point + 'PL.');
+      $('#point_6').text(point + 'PL.');
     }
 
     socket.on('send_row', function(data) {
@@ -280,6 +293,36 @@
       $('#row_v').text(row);
     }
 
+    document.addEventListener('DOMContentLoaded', (event) => {
+        // Check if there is a topic in local storage
+        const topic = localStorage.getItem('topic');
+        if (topic) {
+            // Remove the topic from local storage
+            localStorage.removeItem('topic');
+
+            // Delay the sending of the topic by 1 second
+            setTimeout(() => {
+                fetch('/send_command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({topic: topic}),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Success:', data);
+                    if (data.status !== 'success') {
+                        console.error('Error:', data.message);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    // คุณสามารถจัดการกับข้อผิดพลาดได้ที่นี่
+                });
+            }, 1000);
+        }
+    });
   </script>
 </body>
 </html>

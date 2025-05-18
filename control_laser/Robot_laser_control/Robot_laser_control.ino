@@ -12,7 +12,7 @@ MPU6050 mpu;
 // Buffer for DMP data
 uint8_t fifoBuffer[64];
 
-// Quaternion and vector variables
+// Quaternion and vector variables for orientation and gravity
 Quaternion q;
 VectorFloat gravity;
 float ypr[3];
@@ -24,21 +24,28 @@ uint16_t packetSize;
 
 #define DEBUG 1
 
-// Stepper motor settings
+// Stepper motor pin definitions
 #define PUL_PIN 26  // Pulse pin
 #define DIR_PIN 27  // Direction pin
 #define ENA_PIN 25  // Enable pin
 
+// Serial communication pins for laser sensor
 #define RXD2 16
 #define TXD2 17
 
-#define STEP_ANGLE 0.1125 // Angle per step in degrees
+// Stepper motor step angle in degrees
+#define STEP_ANGLE 0.1125 
+
+// Flag to check if the topic has been received
+volatile bool doneReceived = false;  
 
 uint8_t RETRY = 0; 
 
+// Enumerations for motion and MPU states
 enum motion {OPEN = 1 , MEASURE, STATE, CLOSE};
 enum MPU  {rotation, facing_up};
 
+// WiFi and MQTT client objects
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -54,20 +61,22 @@ void step_motor_withLaser_measurement(int steps);
 void start_step_laser(int steps, int Logic1, int Logic2);
 void move_motor_start(int Logic);
 void control_logic_motor(int steps, float distanceOfmotor);
-void waitForTopic(const char* done_topic, const char* topic);
+void waitForTopic(const char* done_topic);
 void test();
 void callback(char* topic, byte* payload, unsigned int length);
 float laser_value(int Command);
 float laser_sensor_function(int Command);
 bool laser_measure1();
 void mpu_measure(float measure_return[]);
+void prepare_floors(int steps[2], float &distanceOfmotor);
 /*------------------------------*/
 
-
 void setup() {
+  // Initialize serial communication
   Serial.begin(115200);
   Serial2.begin(19200, SERIAL_8N1, RXD2, TXD2);
  
+  // Initialize I2C communication
   Wire.begin();
   Wire.setClock(400000);
 
@@ -82,12 +91,18 @@ void setup() {
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 
+  // Set up MQTT server and callback
   client.setServer(mqtt_broker, 1883);
   client.setCallback(callback);
   reconnect_mqtt();
+
+  // Initialize laser sensor
   Serial2.write("O");
+
+  // Initialize MPU6050
   mpu_setup(); 
 
+  // Configure stepper motor pins
   pinMode(PUL_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
   pinMode(ENA_PIN, OUTPUT);
@@ -95,10 +110,12 @@ void setup() {
 }
 
 void reconnect_mqtt() {
+  // Reconnect to MQTT broker if disconnected
   while (!client.connected()) {
     Serial.println("Connecting to MQTT...");
     if (client.connect(mqtt_client_id)) {
       Serial.println("Connected to MQTT");
+      // Subscribe to necessary topics
       client.subscribe(forward_topic);
       client.subscribe(twofloors_topic);
       client.subscribe(threefloors_topic);
@@ -115,17 +132,21 @@ void reconnect_mqtt() {
   }
 }
 
+/**
+ * @brief Initialize MPU6050 and configure DMP
+ */
 void mpu_setup() {
-
   mpu.initialize();
   devStatus = mpu.dmpInitialize();
 
+  // Set gyro and accelerometer offsets
   mpu.setXGyroOffset(220);
   mpu.setYGyroOffset(76);
   mpu.setZGyroOffset(-85);
   mpu.setZAccelOffset(1788);
 
   if (devStatus == 0) {
+    // Calibrate and enable DMP
     mpu.CalibrateAccel(6);
     mpu.CalibrateGyro(6);
     mpu.PrintActiveOffsets();
@@ -135,193 +156,236 @@ void mpu_setup() {
   }
 }
 
-void step_motor_move (int steps) {
+/**
+ * @brief Move the stepper motor by the specified number of steps
+ * @param steps Number of steps to move
+ */
+void step_motor_move(int steps) {
   for (int i = 0; i < steps; i++) {
-    digitalWrite(PUL_PIN, HIGH);  delayMicroseconds(1000);
-    digitalWrite(PUL_PIN, LOW);   delayMicroseconds(1000);
+    digitalWrite(PUL_PIN, HIGH);  
+    delayMicroseconds(1000);
+    digitalWrite(PUL_PIN, LOW);
+    delayMicroseconds(1000);
   }
 }
 
-void control_stepper_motor(int step[],  float distanceOfmotor) {
+/**
+ * @brief Calculate the number of steps required based on the distance
+ * @param step Array to store calculated steps [motor, laser]
+ * @param distanceOfmotor Distance for calculation
+ */
+void control_stepper_motor(int step[], float distanceOfmotor) {
   if (distanceOfmotor > 0) {
-    float angle_rad = atan(0.80 / (distanceOfmotor));
-    float angle_rad_lasor = atan(0.40 / (distanceOfmotor));
+    float angle_rad = atan(0.80 / distanceOfmotor);
+    float angle_rad_lasor = atan(0.40 / distanceOfmotor);
     float angle_deg = angle_rad * 180 / M_PI;
     float angle_deg_lasor = angle_rad_lasor * 180 / M_PI;
-    step[0] = floor(angle_deg / STEP_ANGLE); // Calculate the number of steps needed // steps 
-    step[1] = floor(angle_deg_lasor / STEP_ANGLE); // Calculate the number of steps needed steps_lasor
+    step[0] = floor(angle_deg / STEP_ANGLE);      // Steps for motor
+    step[1] = floor(angle_deg_lasor / STEP_ANGLE); // Steps for laser
   }
 }
 
+/**
+ * @brief Move the motor in steps while performing laser measurements
+ * @param steps Total steps to move
+ */
 void step_motor_withLaser_measurement(int steps) {
-  float stepsPerLoop = static_cast<float>(steps) / 3.0f; // เก็บค่าทศนิยม
+  float stepsPerLoop = static_cast<float>(steps) / 3.0f; 
   int stepsAccumulated = 0;
   for (int i = 0; i < 3; i++) {
-    int stepsThisIteration = static_cast<int>(stepsPerLoop); // แปลงเป็นจำนวนเต็มในแต่ละรอบ
+    int stepsThisIteration = static_cast<int>(stepsPerLoop); 
     stepsAccumulated += stepsThisIteration;
-    // ปรับรอบสุดท้ายให้รวมค่าที่เหลือจากการปัดเศษ
     if (i == 2) {
       stepsThisIteration += steps - stepsAccumulated;
     }
-    for (int i = 0; i < stepsThisIteration; i++) {
-      digitalWrite(PUL_PIN, HIGH); delayMicroseconds(1000);
-      digitalWrite(PUL_PIN, LOW);  delayMicroseconds(1000);
+    for (int j = 0; j < stepsThisIteration; j++) {
+      digitalWrite(PUL_PIN, HIGH); 
+      delayMicroseconds(1000);
+      digitalWrite(PUL_PIN, LOW);
+      delayMicroseconds(1000);
     }
+
+    // Perform laser measurement after each segment
     if (laser_measure1()) {
+      // Measurement successful, handle if needed
     }
   }
 }
 
 void start_step_laser(int steps, int Logic1, int Logic2) {
+  // Start the motor and laser measurement process
   digitalWrite(DIR_PIN, Logic1); 
-  step_motor_withLaser_measurement(steps);  delay(250);
+  step_motor_withLaser_measurement(steps);  
+  delay(250);
   digitalWrite(DIR_PIN, Logic2);
-  step_motor_move(steps);  delay(250);
+  step_motor_move(steps);  
+  delay(250);
 }
 
 void move_motor_start(int Logic) {
-  float degree = atan(1.6 / 15);
-  int steps = floor(degree / STEP_ANGLE); // 5.71 คือ ค่ามุมที่ต้องการให้มอเตอร์หมุน
+  // Move the motor to the starting position
+  float degree = (atan(1.6 / 15)) * 180 / M_PI; // Desired angle for motor rotation
+  int steps = floor(degree / STEP_ANGLE); // Calculate the number of steps needed
   digitalWrite(DIR_PIN, Logic);
   step_motor_move(steps);
 }
 
 void control_logic_motor(int steps, float distanceOfmotor) {
-  if (distanceOfmotor < 7.20) {
+  // Control the motor logic based on the distance
+  if (distanceOfmotor < 7.80) {
     start_step_laser(steps, LOW, HIGH);
   } else {
     start_step_laser(steps, HIGH, LOW);
   }
 }
 
-void waitForTopic(const char* done_topic, const char* topic) {
-  while (true) {
+void waitForTopic(const char* done_topic) {
+  // Wait for the specified topic to be received
+  doneReceived = false; // Reset the flag
+  while (!doneReceived) {
     client.loop();
-    if (client.connected()) {
-      // Check if the message has been received
-      if (String(topic) == done_topic) {
-        break;
-      }
-    }
     delay(100); // Small delay to avoid busy-waiting
   }
 }
 
+/**
+ * @brief Helper function to prepare stepper motor and calculate steps/distance for floors
+ * @param steps Output array for steps [motor, laser]
+ * @param distanceOfmotor Output for calculated distance
+ */
+void prepare_floors(int steps[2], float &distanceOfmotor) {
+  digitalWrite(ENA_PIN, LOW);
+  mpu_setup();
+  delay(500);
+  move_motor_start(LOW);
+  delay(500);
+
+  while (steps[1] > 100 || steps[1] <= 0) {
+    float distanceOfstart = laser_value(MEASURE);
+    distanceOfmotor = distanceOfstart * cos(atan(1.6 / 15));
+    control_stepper_motor(steps, distanceOfmotor);
+    delay(500);
+  }
+  if (distanceOfmotor >= 14.40) {
+    control_logic_motor(steps[1], distanceOfmotor);
+    client.publish(NoProducts_topic, "No products");
+    delay(250);
+    client.publish(finish_topic, "No products completed.");
+    delay(250);
+    move_motor_start(HIGH);
+    client.publish(forward_topic, "Forward");
+    return;
+  }
+}
+
+/**
+ * @brief Process and control logic for 2 floors
+ */
 void twofloors() {
-  int steps[2] = {0, 0}; // steps, step_lasor
-  digitalWrite(ENA_PIN, LOW);
-  mpu_setup();  delay(500);
-  move_motor_start(LOW); delay(500);
+  int steps[2] = {0, 0};
   float distanceOfmotor = 0;
-  while (steps[1] > 75 || steps[1] <= 0) {
-    float distanceOfstart = laser_value(MEASURE);
-    distanceOfmotor = distanceOfstart * cos(atan(1.6 / 15));
-    Serial.print("distance: ");
-    Serial.println(distanceOfmotor);
-    control_stepper_motor(steps, distanceOfmotor);
-  }
-  if (distanceOfmotor >= 14.40) {
-    control_logic_motor(steps[1], distanceOfmotor);
-    client.publish(finish_topic,"No products.");   delay(250);
-    move_motor_start(HIGH);
-    client.publish(forward_topic,"Forward");  delay(250);
-    return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
+  prepare_floors(steps, distanceOfmotor);
 
-  } else if (distanceOfmotor > 0 && distanceOfmotor < 14.40) {
+  if (distanceOfmotor > 0 && distanceOfmotor < 14.40) {
     control_logic_motor(steps[1], distanceOfmotor);
     move_motor_start(HIGH);
-    //client.publish(lift_topic,"UP");  delay(250);
-    client.publish(finish_topic,"1 Flools");   delay(250);
-    //waitForTopic(done_topic, done_topic);
+    client.publish(finish_topic, "1 Floors completed.");
+    delay(250);
 
+    // Repeat measurement and movement for the next floor
     digitalWrite(DIR_PIN, HIGH);
     step_motor_move(steps[1]);
     start_step_laser(steps[1], HIGH, LOW);
+
     digitalWrite(DIR_PIN, LOW);
     step_motor_move(steps[1]);
-    //client.publish(down_topic,"Down");  delay(250);
-    client.publish(finish_topic,"2 Flools");   delay(250);
-    //waitForTopic(done_topic, done_topic);
-    client.publish(forward_topic,"Forward");  delay(250);
-  } else {
-    client.publish(error_topic,"Twoflools");
-  }   
+    client.publish(finish_topic, "2 Floors completed.");
+    delay(250);
+    client.publish(forward_topic, "Forward");
+    return;
+  }
+
+  // If none of the above, report an error
+  client.publish(error_topic, "Twofloors");
 }
 
+/**
+ * @brief Process and control logic for 3 floors
+ */
 void threefloors() {
-  int steps[2] = {0, 0}; // steps, step_lasor
-  digitalWrite(ENA_PIN, LOW);
-  mpu_setup();  delay(500);
-  move_motor_start(LOW); delay(500);
+  int steps[2] = {0, 0};
   float distanceOfmotor = 0;
-  while (steps[1] > 75 || steps[1] <= 0) {
-    float distanceOfstart = laser_value(MEASURE);
-    distanceOfmotor = distanceOfstart * cos(atan(1.6 / 15));
-    Serial.print("distance: ");
-    Serial.println(distanceOfmotor);
-    control_stepper_motor(steps, distanceOfmotor);
-  }
-  if (distanceOfmotor >= 14.40) {
-    control_logic_motor(steps[1], distanceOfmotor);
-    client.publish(finish_topic,"No products.");   delay(250);
-    move_motor_start(HIGH);
-    client.publish(forward_topic,"Forward");  delay(250);
-    return; // หากค่า distanceOfmotor >= 15.00 ให้จบฟังก์ชันทันที
+  prepare_floors(steps, distanceOfmotor);
 
-  } else if (distanceOfmotor > 0 && distanceOfmotor < 14.40) {
+  if (distanceOfmotor > 0 && distanceOfmotor < 14.40) {
     control_logic_motor(steps[1], distanceOfmotor);
     move_motor_start(HIGH);
-    //client.publish(lift_topic,"UP");  delay(250);
-    client.publish(finish_topic,"1 Flools");   delay(250);
-    //waitForTopic(done_topic, done_topic);
+    client.publish(lift_topic, "UP");
+    client.publish(finish_topic, "1 Floors completed.");
 
+    waitForTopic(done_topic);
+
+    // 2nd floor
     digitalWrite(DIR_PIN, HIGH);
     step_motor_move(steps[1]);
     start_step_laser(steps[1], HIGH, LOW);
+
     digitalWrite(DIR_PIN, LOW);
     step_motor_move(steps[1]);
-    client.publish(lift_topic,"UP");  delay(250);
-    //client.publish(down_topic,"Down");  delay(250);
-    client.publish(finish_topic,"2 Flools");   delay(250);
-    waitForTopic(done_topic, done_topic);
+    client.publish(lift_topic, "UP");
+    client.publish(down_topic, "Down");
+    client.publish(finish_topic, "2 Floors completed.");
+ 
+    waitForTopic(done_topic);
 
+    // 3rd floor
     digitalWrite(DIR_PIN, HIGH);
     step_motor_move(steps[0] * 2);
     start_step_laser(steps[1], HIGH, LOW);
+
     digitalWrite(DIR_PIN, LOW);
     step_motor_move(steps[0] * 2);
-    client.publish(down_topic,"Down");  delay(250);
-    client.publish(finish_topic,"3 Flools");   delay(250);
-    waitForTopic(done_topic, done_topic);
-    client.publish(forward_topic,"Forward");  delay(250);
-  } else {
-    client.publish(error_topic,"Threeflools");
+    client.publish(down_topic, "Down");
+    client.publish(finish_topic, "3 Floors completed.");
+    waitForTopic(done_topic);
+    client.publish(forward_topic, "Forward");
+    return;
   }
+
+  client.publish(error_topic, "Threefloors");
 }
 
+/**
+ * @brief Process and control logic for highest floor
+ */
 void UDFfloors() {
-  int steps[2] = {0, 0}; // steps, step_lasor
+  int steps[2] = {0, 0}; // steps[0]: motor, steps[1]: laser
   digitalWrite(ENA_PIN, LOW);
-  mpu_setup();  delay(500);
+  mpu_setup();
+  delay(500);
+  client.publish(lift_topic, "UP");
+  waitForTopic(done_topic);
+
   float distanceOfmotor = 0;
-  while (distanceOfmotor <= 3.00) {
-    float distanceOfmotor = laser_value(MEASURE);
+  while (distanceOfmotor <= 1.00) {
+    distanceOfmotor = laser_value(MEASURE);
   }
-  if (distanceOfmotor > 3.00) {
-    client.publish(lift_topic,"UP");  delay(250);
-    waitForTopic(done_topic, done_topic);
+
+  if (distanceOfmotor > 1.00) {
     digitalWrite(DIR_PIN, HIGH);
     step_motor_move(steps[0] * 2);
     start_step_laser(steps[1], HIGH, LOW);
+
     digitalWrite(DIR_PIN, LOW);
     step_motor_move(steps[0] * 2);
-    client.publish(down_topic,"Down");  delay(250);
-    client.publish(finish_topic,"UD Flools");   delay(250);
-    waitForTopic(done_topic, done_topic);
-    client.publish(forward_topic,"Forward");  delay(250);
-  } else {
-    client.publish(error_topic,"UDFfloors");
+    client.publish(down_topic, "Down");
+    client.publish(finish_topic, "UD Floors completed.");
+    waitForTopic(done_topic);
+    client.publish(forward_topic, "Forward");
+    return;
   }
+
+  client.publish(error_topic, "UDFfloors");
 }
 
 void test() {
@@ -356,9 +420,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
     doc["distance"] = "-1";
     char payload[200];
     serializeJson(doc, payload);
-    client.publish(back_topic,"Back");
   } else if (String(topic) == test_topic) {
     test();
+  } else if (String(topic) == done_topic) {
+    doneReceived = true;
   }
 }
 /*
@@ -378,7 +443,6 @@ float laser_value(int Command) {
     } else {
        delay(1000); // delay 1 second before checksing sensor state 
        float state =   laser_sensor_function(STATE);
-      // Serial.println("retry");
        if(state > 0) {
         delay(1000); // delay 1 second before retesting  
         continue;
@@ -390,8 +454,7 @@ float laser_value(int Command) {
   }
   return value; 
 }
-
-//เปลี่ยนเป็น serial ที่ส่งค่า 
+ 
 float laser_sensor_function(int Command) {
  
   String stringOne;
@@ -411,15 +474,13 @@ float laser_sensor_function(int Command) {
     case CLOSE:
       Serial2.write("C");
       break;
-  } // switch-case 
+  }
 
   uint32_t now = millis();
-//  Serial.println(stringOne);
   while (stringOne.length() < 20) {
     if(Serial2.available()) { 
       char data = Serial2.read();
       stringOne += data;
-      // stringOne += Serial.read(); 
     }
     // safety for array limit && timeout... in  seconds...
     if (millis() - now > 2000) {
@@ -488,6 +549,4 @@ void loop() {
     reconnect_mqtt();
   }
   client.loop();
-//  laser_sensor_function(MEASURE);
-//  delay(2000);
 }

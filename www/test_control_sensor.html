@@ -21,48 +21,38 @@
             max-width: 600px;
         }
         h1 {
-            font-size: 3em;
-            margin-bottom: 10vh;
+            font-size: 2.2em;
+            margin-bottom: 6vh;
             font-weight: bold;
         }
         .buttons {
             display: flex;
             justify-content: space-between;
             margin-bottom: 10vh;
+            gap: 25px;
         }
         .button {
             background-color: red;
             color: white;
             border: none;
-            padding: 15px 30px;
-            font-size: 1.5em;
-            border-radius: 25px;
+            padding: 0.8em 1.2em;
+            font-size: 1.1em;
+            border-radius: 1.5em;
             cursor: pointer;
             font-weight: bold;
+            min-width: 90px;
+            min-height: 48px;
+            transition: background 0.2s;
+            flex: 1;
+            max-width: 150px;
         }
-        .arrows {
-            display: flex;
-            justify-content: space-between;
+        .button.white {
+            background-color: white;
+            color: black;
         }
-        .arrow {
-            width: 0;
-            height: 0;
-            cursor: pointer;
-        }
-        .left {
-            border-top: 50px solid transparent;
-            border-bottom: 50px solid transparent;
-            border-right: 80px solid white;
-        }
-        .up {
-            border-left: 50px solid transparent;
-            border-right: 50px solid transparent;
-            border-bottom: 80px solid white;
-        }
-        .right {
-            border-top: 50px solid transparent;
-            border-bottom: 50px solid transparent;
-            border-left: 80px solid white;
+        .button:active {
+            background-color: white;
+            color: red;
         }
     </style>
 </head>
@@ -70,14 +60,15 @@
     <div class="container">
         <h1>Control Sensor</h1>
         <div class="buttons">
-            <button class="button" onclick="sendCommand('2F')">2F</button>
-            <button class="button" onclick="sendCommand('3F')">3F</button>
-            <button class="button" onclick="sendCommand('UDF')">UDF</button>
+            <button class="button" onclick="sendCommand('2Floors')">2Floors</button>
+            <button class="button" onclick="sendCommand('3Floors')">3Floors</button>
+            <button class="button" onclick="sendCommand('UDF')">UD Floors</button>
         </div>
-        <div class="arrows">
-            <div class="arrow left" onclick="sendCommand('left')"></div>
-            <div class="arrow up" onclick="sendCommand('up')"></div>
-            <div class="arrow right" onclick="sendCommand('right')"></div>
+        <div class="buttons">
+            <button class="button" onclick="sendCommand('forward')">Forward</button>
+            <button class="button" onclick="sendCommand('back')">Back</button>
+            <button class="button" onclick="sendCommand('next_row')">Next Row</button>
+            <button class="button" onclick="sendCommand('done')">Done</button>
         </div>
     </div>
 
@@ -85,49 +76,37 @@
         function sendCommand(command) {
             let topic;
             switch(command) {
-                case '2F':
+                case '2Floors':
                     topic = '2F';
                     break;
-                case '3F':
+                case '3Floors':
                     topic = '3F';
                     break;
                 case 'UDF':
                     topic = 'UDF';
                     break;
-                case 'left':
-                    topic = 'NEXT_ROW';
+                case 'forward':
+                    topic = 'F';
                     break;
-                case 'right':
+                case 'back':
                     topic = 'B';
                     break;
-                case 'up':
+                case 'done':
                     topic = 'done';
+                    break;
+                case 'next_row':
+                    topic = 'NEXT_ROW';
                     break;
                 default:
                     console.error('Unknown command:', command);
                     return;
             }
 
-            fetch('/send_command', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({topic: topic}),
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Success:', data);
-                if (data.status === 'success') {
-                    window.location.href = '/';
-                } else {
-                    console.error('Error:', data.message);
-                }
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-                // คุณสามารถจัดการกับข้อผิดพลาดได้ที่นี่
-            });
+            // Store the topic in local storage
+            localStorage.setItem('topic', topic);
+
+            // Navigate back to the index page immediately
+            window.location.href = '/';
         }
     </script>
 </body>

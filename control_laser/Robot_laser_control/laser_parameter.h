@@ -1,10 +1,6 @@
-// WiFi STA (เชื่อมต่อ WiFi โรงงาน)
+// WiFi STA mode settings   
 const char* ssid_STA = "ESP32-Access-Point";
 const char* password_STA = "123456789";
-
-// WiFi AP (ปล่อย WiFi ให้ Pi4)
-//const char* ssid_AP = "ESP32-Access-Point";
-//const char* password_AP = "123456789";
 
 // MQTT settings
 const char* mqtt_broker = "192.168.4.100";
@@ -28,3 +24,4 @@ const char* error_topic = "error";
 
 const char* mqtt_topic = "measure";
 const char* finish_topic = "finish";
+const char* NoProducts_topic = "NoProducts";      

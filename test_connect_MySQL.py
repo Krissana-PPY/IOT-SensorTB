@@ -8,10 +8,13 @@ sys.stdout.reconfigure(encoding='utf-8')
 try:
     # กำหนดค่าการเชื่อมต่อ
     connection = mysql.connector.connect(
+        #host='188.166.231.183',
+        #database='datasensor1',
         host='localhost',  # IP ของ PC1
         port=3306,           # พอร์ต MySQL
-        database='mydb',     # ชื่อฐานข้อมูล
+        database='datasensor',     # ชื่อฐานข้อมูล
         user='root',  # ชื่อผู้ใช้ที่สร้างไว้
+        #password='t295V37rQ%uS'  # รหัสผ่านของผู้ใช้
         password='1234'  # รหัสผ่านของผู้ใช้
     )
 
