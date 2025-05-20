@@ -173,6 +173,7 @@ void step_motor_move(int steps) {
  * @brief Calculate the number of steps required based on the distance
  * @param step Array to store calculated steps [motor, laser]
  * @param distanceOfmotor Distance for calculation
+ * 1 พาเลท สูง 1.6 เมตร
  */
 void control_stepper_motor(int step[], float distanceOfmotor) {
   if (distanceOfmotor > 0) {
@@ -221,6 +222,17 @@ void start_step_laser(int steps, int Logic1, int Logic2) {
   step_motor_move(steps);  
   delay(250);
 }
+/** 
+ *                           assume * 7.8m
+ *                |---|---|---|---|---|---|---|---|---|---|
+ *                |   |   |   |   | | |   |   |   |   |   |
+ *                |   |   |   |   | | |   |   |   |   |   |
+ * |sensor|*      |---|---|---|---|---|---|---|---|---|---|
+ *          |     | * |   |   |   | | |   |   |   |   |   |
+ *         1.6m   |   |   |   |   | * |   |   |   |   |   |
+ *          |     |___|___|___|___|_|_|___|___|___|___|__*|
+ * ----------------------------- 15m ----------------------
+*/
 
 void move_motor_start(int Logic) {
   // Move the motor to the starting position
@@ -320,34 +332,30 @@ void threefloors() {
   if (distanceOfmotor > 0 && distanceOfmotor < 14.40) {
     control_logic_motor(steps[1], distanceOfmotor);
     move_motor_start(HIGH);
-    client.publish(lift_topic, "UP");
     client.publish(finish_topic, "1 Floors completed.");
+    delay(250);
 
-    waitForTopic(done_topic);
-
-    // 2nd floor
     digitalWrite(DIR_PIN, HIGH);
     step_motor_move(steps[1]);
     start_step_laser(steps[1], HIGH, LOW);
 
     digitalWrite(DIR_PIN, LOW);
     step_motor_move(steps[1]);
-    client.publish(lift_topic, "UP");
-    client.publish(down_topic, "Down");
+    //client.publish(lift_topic, "UP");
     client.publish(finish_topic, "2 Floors completed.");
  
-    waitForTopic(done_topic);
+    //waitForTopic(done_topic);
 
     // 3rd floor
     digitalWrite(DIR_PIN, HIGH);
-    step_motor_move(steps[0] * 2);
+    step_motor_move((steps[0] * 2) + steps[1]);
     start_step_laser(steps[1], HIGH, LOW);
 
     digitalWrite(DIR_PIN, LOW);
-    step_motor_move(steps[0] * 2);
-    client.publish(down_topic, "Down");
+    step_motor_move((steps[0] * 2) + steps[1]);
+    //client.publish(down_topic, "Down");
     client.publish(finish_topic, "3 Floors completed.");
-    waitForTopic(done_topic);
+    //waitForTopic(done_topic);
     client.publish(forward_topic, "Forward");
     return;
   }

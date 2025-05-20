@@ -1,5 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS `datasensor1` DEFAULT CHARACTER SET utf8mb4;
-USE `datasensor1`;
+CREATE SCHEMA IF NOT EXISTS `datasensor` DEFAULT CHARACTER SET utf8mb4;
+USE `datasensor`;
 
 -- Table for location
 CREATE TABLE LOCATION (

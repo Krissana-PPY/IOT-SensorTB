@@ -18,11 +18,18 @@ sub_pallet = []  # List to store the number of pallets in each sub-row
 sub_row = 1  # Current sub-row number in a pallet row
 id = 1  # Identifier for the current pallet
 recheckpages = 0  # Counter for rechecking pages
+last_row_id = None
 
 def create_app():
     """Create and configure the Flask application."""
     app = Flask(__name__, template_folder='www/')
     app.config['SECRET_KEY'] = 'secret_key'
+
+    # MySQL Configuration
+    app.config['MYSQL_HOST'] = ''
+    app.config['MYSQL_USER'] = 'root'
+    app.config['MYSQL_PASSWORD'] = ''
+    app.config['MYSQL_DB'] = 'datasensor1'
     
     return app
 
@@ -121,102 +128,59 @@ def clear_lists(*lists):
     for l in lists:
         l.clear()
 
-# Global database connections
-db_connections = []
-
-def initialize_db_connections():
-    """Initialize database connections at the start of the program."""
-    global db_connections
-    try:
-        # Connection to the first database
-        conn1 = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="1234",
-            database="datasensor"
-        )
-        db_connections.append(conn1)
-        print("Connected to localhost database (conn1).")
-
-        # Connection to the second database
-        conn2 = mysql.connector.connect(
-            host="188.166.231.183",
-            user="root",
-            password="t295V37rQ%uS",
-            database="datasensor1"
-        )
-        db_connections.append(conn2)
-        print("Connected to server database (conn2).")
-
-        logging.info("Database connections initialized successfully.")
-    except Error as err:
-        logging.error(f"Error initializing database connections: {err}")
-
-def close_db_connections():
-    """Close all database connections when the program exits."""
-    global db_connections
-    for conn in db_connections:
-        if conn and conn.is_connected():
-            conn.close()
-    db_connections.clear()
-    logging.info("Database connections closed.")
-
 @contextmanager
 def get_db_connections():
-    """Provide the initialized database connections."""
-    global db_connections
-    yield db_connections
-
-def ensure_db_connections():
-    """Ensure all database connections are alive, reconnect if needed."""
-    global db_connections
-    for i, conn in enumerate(db_connections):
-        try:
-            if not conn.is_connected():
-                conn.reconnect(attempts=3, delay=2)
-        except Exception as e:
-            logging.error(f"Error reconnecting to database {i}: {e}")
+    try:
+        connection = mysql.connector.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        yield connection
+    except Error as err:
+        logging.error(f"Database connection error: {err}")
+        yield None
+    finally:
+        if 'connection' in locals() and connection and connection.is_connected():
+            connection.close()
 
 def get_first_row_id(id):
     """Get the first ROW_ID and NumberOfPages from the LOCATION table."""
-    global db_connections
-    ensure_db_connections()
-    if db_connections and len(db_connections) > 0:
-        try:
-            cursor = db_connections[0].cursor()  # Use conn1
-            cursor.execute("SELECT ROW_ID, NumberOfPages FROM LOCATION WHERE ID = %s", (id,))
-            result = cursor.fetchone()
-            cursor.close()
-            return result if result else (None, None)
-        except Error as e:
-            logging.error(f"Error fetching ROW_ID and NumberOfPages: {e}")
+    with get_db_connections() as connection:
+        if connection:
+            try:
+                cursor = connection.cursor()
+                cursor.execute("SELECT ROW_ID, NumberOfPages FROM LOCATION WHERE ID = %s", (id,))
+                result = cursor.fetchone()
+                cursor.close()
+                return result if result else (None, None)
+            except Error as e:
+                logging.error(f"Error fetching ROW_ID and NumberOfPages: {e}")
+                return None, None
+        else:
+            logging.error("Database connection is not initialized.")
             return None, None
-    else:
-        logging.error("Database connection (conn1) is not initialized.")
-        return None, None
 
 def get_MAX_RANGE(id):
     """Get the MAX_RANGE from the LOCATION table."""
-    global db_connections
-    ensure_db_connections()
-    if db_connections and len(db_connections) > 0:
-        try:
-            cursor = db_connections[0].cursor()  # Use conn1
-            cursor.execute("SELECT AREA FROM LOCATION WHERE ID = %s", (id,))
-            MAX_RANGE = cursor.fetchone()
-            cursor.close()
-            return MAX_RANGE[0] if MAX_RANGE else None
-        except Error as e:
-            logging.error(f"Error fetching MAX_RANGE: {e}")
+    with get_db_connections() as connection:
+        if connection:
+            try:
+                cursor = connection.cursor()
+                cursor.execute("SELECT AREA FROM LOCATION WHERE ID = %s", (id,))
+                MAX_RANGE = cursor.fetchone()
+                cursor.close()
+                return MAX_RANGE[0] if MAX_RANGE else None
+            except Error as e:
+                logging.error(f"Error fetching MAX_RANGE: {e}")
+                return None
+        else:
+            logging.error("Database connection is not initialized.")
             return None
-    else:
-        logging.error("Database connection (conn1) is not initialized.")
-        return None
 
 def insert_stock_and_row_pallet(row_id):
-    """Insert ROW_ID and current date into STOCK and ROW_PALLET tables in both databases."""
-    global db_connections
-    ensure_db_connections()
+    """Insert ROW_ID and current date into STOCK and ROW_PALLET tables in the database."""
     current_date = datetime.now().strftime("%Y-%m-%d")
     queries = [
         (
@@ -232,43 +196,39 @@ def insert_stock_and_row_pallet(row_id):
             (row_id, current_date, row_id, current_date)
         )
     ]
-
-    for connection in db_connections:
-        try:
-            cursor = connection.cursor()
-            for query, params in queries:
-                cursor.execute(query, params)
-            connection.commit()
-            cursor.close()
-            logging.info(f"Inserted stock and row pallet for ROW_ID: {row_id} in one database.")
-        except Error as e:
-            logging.error(f"Error inserting stock and row pallet in one database: {e}")
+    with get_db_connections() as connection:
+        if connection:
+            try:
+                cursor = connection.cursor()
+                for query, params in queries:
+                    cursor.execute(query, params)
+                connection.commit()
+                cursor.close()
+                logging.info(f"Inserted stock and row pallet for ROW_ID: {row_id}.")
+            except Error as e:
+                logging.error(f"Error inserting stock and row pallet: {e}")
 
 def insernt_each_pallet(row_id, sub_row, distance, angle_x, angle_y):
-    """Send data for each pallet to both databases."""
-    global db_connections
-    ensure_db_connections()
+    """Send data for each pallet to the database."""
     current_date = datetime.now().strftime("%Y-%m-%d")
     query = (
         "INSERT INTO ROW_EACH_PALLET (ROW_ID, PALLET_NO, DISTANCE, ANGLE_X, ANGLE_Y, UPDATE_DATE) "
         "VALUES (%s, %s, %s, %s, %s, %s)"
     )
     params = (row_id, sub_row, distance, angle_x, angle_y, current_date)
-
-    for connection in db_connections:
-        try:
-            cursor = connection.cursor()
-            cursor.execute(query, params)
-            connection.commit()
-            cursor.close()
-            logging.info(f"Inserted pallet data for ROW_ID: {row_id}, SUB_ROW: {sub_row} in one database.")
-        except Error as e:
-            logging.error(f"Error inserting pallet data in one database: {e}")
+    with get_db_connections() as connection:
+        if connection:
+            try:
+                cursor = connection.cursor()
+                cursor.execute(query, params)
+                connection.commit()
+                cursor.close()
+                logging.info(f"Inserted pallet data for ROW_ID: {row_id}, SUB_ROW: {sub_row}.")
+            except Error as e:
+                logging.error(f"Error inserting pallet data: {e}")
 
 def insert_each_pallet_bulk(row_id, sub_row, distance_list, angle_x_list, angle_y_list):
-    """Bulk insert data for each pallet to both databases."""
-    global db_connections
-    ensure_db_connections()
+    """Bulk insert data for each pallet to the database."""
     current_date = datetime.now().strftime("%Y-%m-%d")
     values = [
         (row_id, sub_row, distance_list[i], angle_x_list[i], angle_y_list[i], current_date)
@@ -278,86 +238,82 @@ def insert_each_pallet_bulk(row_id, sub_row, distance_list, angle_x_list, angle_
         "INSERT INTO ROW_EACH_PALLET (ROW_ID, PALLET_NO, DISTANCE, ANGLE_X, ANGLE_Y, UPDATE_DATE) "
         "VALUES (%s, %s, %s, %s, %s, %s)"
     )
-    for connection in db_connections:
-        try:
-            cursor = connection.cursor()
-            cursor.executemany(query, values)
-            connection.commit()
-            cursor.close()
-            logging.info(f"Bulk inserted pallet data for ROW_ID: {row_id}, SUB_ROW: {sub_row} in one database.")
-        except Error as e:
-            logging.error(f"Error bulk inserting pallet data in one database: {e}")
+    with get_db_connections() as connection:
+        if connection:
+            try:
+                cursor = connection.cursor()
+                cursor.executemany(query, values)
+                connection.commit()
+                cursor.close()
+                logging.info(f"Bulk inserted pallet data for ROW_ID: {row_id}, SUB_ROW: {sub_row}.")
+            except Error as e:
+                logging.error(f"Error bulk inserting pallet data: {e}")
 
 def insernt_ROW_PALLET(row_id, sub_row, sub_pallet):
-    """Send data for each pallet to both databases."""
-    global db_connections
-    ensure_db_connections()
+    """Send data for each pallet to the database."""
     current_date = datetime.now().strftime("%Y-%m-%d")
-    for connection in db_connections:
-        try:
-            cursor = connection.cursor()
-            if sub_pallet < 0:
-                sub_pallet = -1
-            if sub_row > 1:
-                query = (
-                    "INSERT INTO ROW_PALLET (ROW_ID, PALLET_NO, EACH_PALLET, UPDATE_DATE) "
-                    "VALUES (%s, %s, %s, %s)"
-                )
-                params = (row_id, sub_row, sub_pallet, current_date)
-            else:
-                query = (
-                    "UPDATE ROW_PALLET SET PALLET_NO = %s, EACH_PALLET = %s "
-                    "WHERE ROW_ID = %s AND UPDATE_DATE = %s"
-                )
-                params = (sub_row, sub_pallet, row_id, current_date)
-            cursor.execute(query, params)
-            connection.commit()
-            cursor.close()
-            logging.info(f"Inserted/Updated ROW_PALLET for ROW_ID: {row_id}, SUB_ROW: {sub_row} in one database.")
-        except Error as e:
-            logging.error(f"Error inserting/updating ROW_PALLET in one database: {e}")
+    with get_db_connections() as connection:
+        if connection:
+            try:
+                cursor = connection.cursor()
+                if sub_pallet < 0:
+                    sub_pallet = -1
+                if sub_row > 1:
+                    query = (
+                        "INSERT INTO ROW_PALLET (ROW_ID, PALLET_NO, EACH_PALLET, UPDATE_DATE) "
+                        "VALUES (%s, %s, %s, %s)"
+                    )
+                    params = (row_id, sub_row, sub_pallet, current_date)
+                else:
+                    query = (
+                        "UPDATE ROW_PALLET SET PALLET_NO = %s, EACH_PALLET = %s "
+                        "WHERE ROW_ID = %s AND UPDATE_DATE = %s"
+                    )
+                    params = (sub_row, sub_pallet, row_id, current_date)
+                cursor.execute(query, params)
+                connection.commit()
+                cursor.close()
+                logging.info(f"Inserted/Updated ROW_PALLET for ROW_ID: {row_id}, SUB_ROW: {sub_row}.")
+            except Error as e:
+                logging.error(f"Error inserting/updating ROW_PALLET: {e}")
 
 def update_STOCK_UPDATE(row_id, pallets_total):
     """Send data for pallet to database."""
-    global db_connections
-    ensure_db_connections()
     current_date = datetime.now().strftime("%Y-%m-%d")
     query = (
         "UPDATE STOCK SET PALLET = %s WHERE ROW_ID = %s AND UPDATE_DATE = %s"
     )
     params = (pallets_total, row_id, current_date)
-
-    for connection in db_connections:
-        try:
-            cursor = connection.cursor()
-            cursor.execute(query, params)
-            connection.commit()
-            cursor.close()
-            logging.info(f"Updated STOCK for ROW_ID: {row_id} in one database.")
-        except Error as e:
-            logging.error(f"Error updating STOCK in one database: {e}")
+    with get_db_connections() as connection:
+        if connection:
+            try:
+                cursor = connection.cursor()
+                cursor.execute(query, params)
+                connection.commit()
+                cursor.close()
+                logging.info(f"Updated STOCK for ROW_ID: {row_id}.")
+            except Error as e:
+                logging.error(f"Error updating STOCK: {e}")
 
 def DELETE_ROW(row_id):
     """Delete data from the ROW PALLET table."""
-    global db_connections
-    ensure_db_connections()
     current_date = datetime.now().strftime("%Y-%m-%d")
     queries = [
         "DELETE FROM ROW_EACH_PALLET WHERE ROW_ID = %s AND UPDATE_DATE = %s",
         "DELETE FROM ROW_PALLET WHERE ROW_ID = %s AND UPDATE_DATE = %s",
         "DELETE FROM STOCK WHERE ROW_ID = %s AND UPDATE_DATE = %s"
     ]
-
-    for connection in db_connections:
-        try:
-            cursor = connection.cursor()
-            for query in queries:
-                cursor.execute(query, (row_id, current_date))
-            connection.commit()
-            cursor.close()
-            logging.info(f"Deleted data for ROW_ID: {row_id} in one database.")
-        except Error as e:
-            logging.error(f"Error deleting data for ROW_ID: {row_id} in one database: {e}")
+    with get_db_connections() as connection:
+        if connection:
+            try:
+                cursor = connection.cursor()
+                for query in queries:
+                    cursor.execute(query, (row_id, current_date))
+                connection.commit()
+                cursor.close()
+                logging.info(f"Deleted data for ROW_ID: {row_id}.")
+            except Error as e:
+                logging.error(f"Error deleting data for ROW_ID: {row_id}: {e}")
 
 # MQTT Handlers to process incoming messages
 @mqtt.on_connect()
@@ -370,10 +326,16 @@ def handle_connect(client, userdata, flags, rc):
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
     """Handle incoming MQTT messages."""
-    global sub_row, id, recheckpages
+    global sub_row, id, recheckpages, last_row_id
     msg = message.payload.decode()
     print(message.topic + " " + str(msg))
-    row_id, page = get_first_row_id(id)
+    if last_row_id is None or id != getattr(handle_mqtt_message, 'last_id', None):
+        row_id, page = get_first_row_id(id)
+        handle_mqtt_message.last_id = id
+        last_row_id = row_id
+    else:
+        row_id = last_row_id
+
     if row_id:
         socketio.emit('send_c_row', {'c_row_v': row_id})
 
@@ -396,7 +358,7 @@ def handle_mqtt_message(client, userdata, message):
                 event_name = f'send_point_{i}'
                 data = format_point_data(-1)  # Send data for the relevant pallet
                 socketio.emit(event_name, data, namespace='/')
-        if distance:  # เพิ่มเช็คกรณีไม่มีข้อมูล
+        if distance:
             insert_each_pallet_bulk(row_id, sub_row, distance, angle_x, angle_y)
         # Store the last measurement in the database
         insernt_ROW_PALLET(row_id, sub_row, sub_pallet[-1])
@@ -449,7 +411,7 @@ def handle_mqtt_message(client, userdata, message):
     #    if id <= 1:
     #        id = 1
     #    row_id, page = get_first_row_id(id)
-    #    socketio.emit('send_c_row', format_current_row(row_id), namespace='/')
+    #    socketio.emit('send_c_row', format_current_row(row_id))
     #    socketio.emit('set_zero', format_all_zero(), namespace='/')
     
     elif message.topic == "START":
@@ -494,9 +456,5 @@ def send_command():
     return jsonify({'status': 'error', 'message': 'Invalid topic'}), 400
 
 if __name__ == "__main__":
-    try:
-        initialize_db_connections()  # Initialize database connections at startup
-        print("All systems are ready. Application is now running.")
-        socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
-    finally:
-        close_db_connections()  # Ensure connections are closed on exit
+    print("All systems are ready. Application is now running.")
+    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
