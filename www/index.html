@@ -68,10 +68,22 @@
 
     .pointGroupDiv {
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       margin-top: 30px;
       margin-bottom: 30px;
+    }
+
+    .pointRow {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 18px; /* Add vertical spacing between rows */
+    }
+    .pointRow:last-child {
+      margin-bottom: 0; /* Remove margin from last row */
     }
 
     .point {
@@ -115,7 +127,7 @@
     }
 
     #startButton, #resultsButton {
-      margin-right: 20px; /* เพิ่มระยะห่างทางขวา */
+      margin-right: 20px;
     }
 
     #testButton {
@@ -141,26 +153,34 @@
     <h1>STOCK-CHECKING</h1>
     <div class="sensorDiv">
       <div class="valueDiv">
-        <!--ชื่อและรหัสพาเลท-->
+        <!-- Current row name and code -->
         <p><span id="c_row_v">Current Row</span></p> 
       </div>
     </div>
     <div class="pointGroupDiv">
-      <!--ผลลัพธ์แต่ละพาเลท-->
-      <div class="point" id="point_1"><span>Point 1<span></div>
-      <div class="point" id="point_2"><span>Point 2<span></div>
-      <div class="point" id="point_3"><span>Point 3<span></div>
-      <div class="point" id="point_4"><span>Point 4<span></div>
-      <div class="point" id="point_5"><span>Point 5<span></div>
-      <div class="point" id="point_6"><span>Point 6<span></div>
+      <div class="pointRow">
+        <div class="point" id="point_9"><span>Point 9</span></div>
+        <div class="point" id="point_6"><span>Point 6</span></div>
+        <div class="point" id="point_3"><span>Point 3</span></div>
+      </div>
+      <div class="pointRow">
+        <div class="point" id="point_8"><span>Point 8</span></div>
+        <div class="point" id="point_5"><span>Point 5</span></div>
+        <div class="point" id="point_2"><span>Point 2</span></div>
+      </div>
+      <div class="pointRow">
+        <div class="point" id="point_7"><span>Point 7</span></div>
+        <div class="point" id="point_4"><span>Point 4</span></div>
+        <div class="point" id="point_1"><span>Point 1</span></div>
+      </div>
     </div>
     <div class="sensorDiv">
       <div class="valueDiv">
-        <!--ชื่อและรหัสพาเลทก่อนหน้า-->
+        <!-- Previous row name and code -->
         <p><span id="row_v">Row</span></p>
       </div>
       <div class="valueDiv">
-        <!--ผลรวมจำนวนพาเลท-->
+        <!-- Total number of pallets -->
         <p><span id="pallet_v">pallet</span></p>
       </div>
     </div>
@@ -193,7 +213,6 @@
       console.log('Message:', data);
     });
 
-    //If received message from server
     socket.on('send_pallet', function(data) {
       update_palate(data.pallet_v);
     });
@@ -202,6 +221,7 @@
       $('#pallet_v').text(pallet_v);
     }
 
+    // Point 1
     socket.on('send_point_1', function(data) {
       update_P1(data.point);
     });
@@ -210,6 +230,7 @@
       $('#point_1').text(point + ' PL.');
     }
 
+    // Point 2
     socket.on('send_point_2', function(data) {
       update_P2(data.point);
     });
@@ -218,6 +239,7 @@
       $('#point_2').text(point + ' PL.');
     }
 
+    // Point 3
     socket.on('send_point_3', function(data) {
       update_P3(data.point);
     });
@@ -226,6 +248,7 @@
       $('#point_3').text(point + ' PL.');
     }
 
+    // Point 4
     socket.on('send_point_4', function(data) {
       update_P4(data.point);
     });
@@ -234,6 +257,7 @@
       $('#point_4').text(point + ' PL.');
     }
 
+    // Point 5
     socket.on('send_point_5', function(data) {
       update_P5(data.point);
     });
@@ -242,6 +266,7 @@
       $('#point_5').text(point + ' PL.');
     }
 
+    // Point 6
     socket.on('send_point_6', function(data) {
       update_P6(data.point);
     });
@@ -250,6 +275,34 @@
       $('#point_6').text(point + ' PL.');
     }
 
+    // Point 7
+    socket.on('send_point_7', function(data) {
+      update_P7(data.point);
+    });
+    
+    function update_P7(point) {
+      $('#point_7').text(point + ' PL.');
+    }
+
+    // Point 8
+    socket.on('send_point_8', function(data) {
+      update_P8(data.point);
+    });
+
+    function update_P8(point) {
+      $('#point_8').text(point + ' PL.');
+    }
+
+    // Point 9
+    socket.on('send_point_9', function(data) {
+      update_P9(data.point);
+    });
+
+    function update_P9(point) {
+      $('#point_9').text(point + ' PL.');
+    }
+
+    // Set all points and pallet to zero
     socket.on('set_zero', function(data) {
       updateSensorData(data.pallet_v ,data.point);
     });
@@ -262,8 +315,12 @@
       $('#point_4').text(point + ' PL.');
       $('#point_5').text(point + ' PL.');
       $('#point_6').text(point + ' PL.');
+      $('#point_7').text(point + ' PL.');
+      $('#point_8').text(point + ' PL.');
+      $('#point_9').text(point + ' PL.');
     }
 
+    // Update current row
     socket.on('send_c_row', function(data) {
       update_crow(data.c_row_v);
     });
@@ -272,6 +329,7 @@
       $('#c_row_v').text(row);
     }
 
+    // Set all points to zero
     socket.on('set_point_zero', function(data) {
       point_all_zero(data.point);
     });
@@ -285,6 +343,7 @@
       $('#point_6').text(point + 'PL.');
     }
 
+    // Update previous row
     socket.on('send_row', function(data) {
       update_row(data.row_v);
     });
@@ -293,14 +352,11 @@
       $('#row_v').text(row);
     }
 
+    // Send command from localStorage topic if exists
     document.addEventListener('DOMContentLoaded', (event) => {
-        // Check if there is a topic in local storage
         const topic = localStorage.getItem('topic');
         if (topic) {
-            // Remove the topic from local storage
             localStorage.removeItem('topic');
-
-            // Delay the sending of the topic by 1 second
             setTimeout(() => {
                 fetch('/send_command', {
                     method: 'POST',
@@ -318,7 +374,6 @@
                 })
                 .catch((error) => {
                     console.error('Error:', error);
-                    // คุณสามารถจัดการกับข้อผิดพลาดได้ที่นี่
                 });
             }, 1000);
         }
