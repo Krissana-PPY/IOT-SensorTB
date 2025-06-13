@@ -5,8 +5,8 @@
 #include <lwip/tcpip.h> // รวมไฟล์เพื่อใช้ tcpip_callback
 
 // Replace with your network credentials
-const char* ssid = "iPhone";
-const char* password = "0951388070z";
+const char* ssid = "Your_SSID";
+const char* password = "Your_PASSWORD";
 
 // Access Point credentials
 const char* ap_ssid = "ESP32-Access-Point";

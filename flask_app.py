@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 from flask_mqtt import Mqtt
 import math
@@ -14,14 +14,14 @@ angle_x = []  # List to store angles along the X-axis
 angle_y = []  # List to store angles along the Y-axis
 sub_pallet = []  # List to store the number of pallets in each sub-row
 sub_row = 1  # Current sub-row number in a pallet row
-current_id = 1  # Identifier for the current pallet
+current_id = 0  # Identifier for the current pallet
 recheck_pages = 0  # Counter for rechecking pages
 
 last_row_id = None
 last_max_range_id = None
 last_max_range_value = None
 
-url = "http://localhost:5159/api/"
+url = "http://"
 
 def CreateApp():
     """Create and configure the Flask application."""
@@ -112,9 +112,28 @@ def CalculateAverageDistance():
 def CalResultPallet(average_distance):
     """Calculate the number of pallets based on the average distance."""
     max_range = (GetMaxRange(current_id) * 1.2) + 4.2
-    pallet = math.floor((max_range - average_distance) / 1.215)
+    pallet_calc = (max_range - average_distance) / 1.215
+    if pallet_calc < 0.8:
+        pallet = 1
+    else:
+        pallet = math.floor(pallet_calc)
     sub_pallet.append(pallet)
     return pallet
+
+def HandleNextRowOrQR(row_id):
+    """Handle logic when receiving NEXT_ROW or QR message."""
+    pallets_total = SumPallet()
+    print(f"Total pallets for {row_id} : {pallets_total}")
+    socketio.emit('send_row', FormatRow(row_id), namespace='/')
+    socketio.emit('send_pallet', FormatPalletData(pallets_total), namespace='/')
+    socketio.emit('set_point_zero', FormatPointZero(), namespace='/')
+    FormatPalletData(pallets_total)
+    PostStock(row_id, pallets_total)
+    ClearLists(sub_pallet)
+    global sub_row, current_id
+    sub_row = 1
+    current_id += 1
+    return GetFirstRowId(current_id)
 
 def SumPallet():
     """Sum the number of pallets in the sub_pallet list."""
@@ -265,17 +284,21 @@ def HandleMqttMessage(client, userdata, message):
     global sub_row, current_id, recheck_pages, last_row_id
     msg = message.payload.decode()
     print(message.topic + " " + str(msg))
-    if last_row_id is None or current_id != getattr(HandleMqttMessage, 'last_id', None):
-        row_id, page = GetFirstRowId(current_id)
-        HandleMqttMessage.last_id = current_id
-        last_row_id = row_id
-    else:
-        row_id = last_row_id
+    if current_id > 0:
+        if last_row_id is None or current_id != getattr(HandleMqttMessage, 'last_id', None):
+            row_id, page = GetFirstRowId(current_id)
+            HandleMqttMessage.last_id = current_id
+            last_row_id = row_id
+        else:
+            row_id = last_row_id
 
     if message.topic == "measure":
         CollectSensorData(msg)
 
     elif message.topic == "finish":
+        row_id, page = GetFirstRowId(current_id)
+        socketio.emit('send_c_row', {'c_row_v': row_id})
+
         for i in range(len(distance)):
             CalDistacetrue(distance[i], angle_y[i])
         average_distance = CalculateAverageDistance()
@@ -288,7 +311,7 @@ def HandleMqttMessage(client, userdata, message):
 
         for i in range(1, len(sub_pallet) + 1):
             event_name = f'send_point_{i}'
-            data = FormatPointData(sub_pallet[i - 1])  # Send data for the relevant pallet
+            data = FormatPointData(sub_pallet[i - 1])
             socketio.emit(event_name, data, namespace='/')
 
         PostRowPallet(row_id, sub_row, sub_pallet[-1])
@@ -310,25 +333,15 @@ def HandleMqttMessage(client, userdata, message):
             socketio.emit('send_c_row', {'c_row_v': row_id})
 
         recheck_pages += 1
-        if recheck_pages > page:
-            recheck_pages = 1
-            mqtt.publish("NEXT_ROW", "")
 
-    elif message.topic == "NEXT_ROW":
-        # Calculate total number of pallets and store in the database
-        pallets_total = SumPallet()
-        print(f"Total pallets for {row_id} : {pallets_total}")
-        socketio.emit('send_c_row', FormatCurrentRow(row_id), namespace='/')
-        socketio.emit('send_row', FormatRow(row_id), namespace='/')
-        socketio.emit('send_pallet', FormatPalletData(pallets_total), namespace='/')
-        socketio.emit('set_point_zero', FormatPointZero(), namespace='/')
-        FormatPalletData(pallets_total)
-        PostStock(row_id, pallets_total)
-        ClearLists(distance, angle_x, angle_y, distance_true, sub_pallet)
-        sub_row = 1
-        current_id += 1
-        row_id, page = GetFirstRowId(current_id)
-        
+    elif message.topic == "QR":
+        if current_id == 0:
+            current_id += 1
+            print("START")
+        elif current_id > 0:
+            row_id, page = HandleNextRowOrQR(row_id)
+            socketio.emit('send_c_row', {'c_row_v': row_id})
+
     elif message.topic == "B":
         ClearLists(distance, angle_x, angle_y, distance_true, sub_pallet)
         sub_row = 1
@@ -339,10 +352,10 @@ def HandleMqttMessage(client, userdata, message):
         if row_id:
             socketio.emit('send_c_row', {'c_row_v': row_id})
         socketio.emit('set_zero', FormatAllZero(), namespace='/')
-    
-    elif message.topic == "START":
-        print("Process started")
-        mqtt.publish("F", "forward")
+
+    elif message.topic == "T":
+        row_id, page = GetFirstRowId(1)
+        print(f"Resetting to first row: {row_id}")
 
 # SocketIO Handlers to communicate with the client
 @socketio.on('connect')
@@ -362,24 +375,13 @@ def Index():
     """Render the main HTML page."""
     return render_template("index.html")
 
-@app.route("/test_control_sensor.html")
-def TestControlSensor():
-    """Render the test control sensor HTML page."""
-    return render_template("test_control_sensor.html")
+@app.route('/index.html')
+def index_html():
+    return render_template("index.html")
 
-@app.route('/send_command', methods=['POST'])
-def SendCommand():
-    """Handle sending commands via MQTT."""
-    data = request.get_json()
-    topic = data.get('topic')
-    if topic:
-        try:
-            mqtt.publish(topic, '')
-            return jsonify({'status': 'success'}), 200
-        except Exception as e:
-            logging.error(f"Error publishing topic {topic}: {e}")
-            return jsonify({'status': 'error', 'message': 'Failed to publish topic'}), 500
-    return jsonify({'status': 'error', 'message': 'Invalid topic'}), 400
+@app.route('/service-worker.js')
+def service_worker():
+    return send_from_directory('static', 'service-worker.js')
 
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)

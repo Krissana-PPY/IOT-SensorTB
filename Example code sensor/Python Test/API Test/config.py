@@ -13,4 +13,4 @@ last_row_id = None
 last_max_range_id = None
 last_max_range_value = None
 
-url = "http://localhost:5159/api/"
+url = "https://tblapi.hatang.xyz/api/"

@@ -63,6 +63,7 @@
             <button class="button" onclick="sendCommand('2Floors')">2Floors</button>
             <button class="button" onclick="sendCommand('3Floors')">3Floors</button>
             <button class="button" onclick="sendCommand('UDF')">UD Floors</button>
+            <button class="button" onclick="sendCommand('Test')">Test</button>
         </div>
         <div class="buttons">
             <button class="button" onclick="sendCommand('forward')">Forward</button>
@@ -92,10 +93,13 @@
                     topic = 'B';
                     break;
                 case 'done':
-                    topic = 'done';
+                    topic = 'QR';
                     break;
                 case 'next_row':
                     topic = 'NEXT_ROW';
+                    break;
+                case 'Test':
+                    topic = 'T';
                     break;
                 default:
                     console.error('Unknown command:', command);

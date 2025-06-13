@@ -129,7 +129,23 @@
     #startButton, #resultsButton {
       margin-right: 20px;
     }
-    
+
+    #testButton {
+      font-size: 24px;
+      padding: 15px 30px;
+      margin-top: 20px;
+      border-radius: 5px;
+      background-color: #4CAF50;
+      border: none;
+      cursor: pointer;
+      color: #ffffff;
+      transition: background-color 0.3s;
+      width: 200px;
+    }
+
+    #testButton:hover {
+      background-color: #45a049;
+    }
   </style>
 </head>
 <body>
@@ -169,6 +185,7 @@
       </div>
     </div>
     <p id="state" class="state">State: wait for connection...</p>
+    <button id="testButton" onclick="location.href='/test_control_sensor.html'">Test function</button>
   </div>
 
   <script>
@@ -337,6 +354,33 @@
     function update_row(row) {
       $('#row_v').text(row);
     }
+
+    // Send command from localStorage topic if exists
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const topic = localStorage.getItem('topic');
+        if (topic) {
+            localStorage.removeItem('topic');
+            setTimeout(() => {
+                fetch('/send_command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({topic: topic}),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Success:', data);
+                    if (data.status !== 'success') {
+                        console.error('Error:', data.message);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+            }, 1000);
+        }
+    });
   </script>
 </body>
 </html>
