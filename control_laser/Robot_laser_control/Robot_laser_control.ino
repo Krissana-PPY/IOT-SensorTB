@@ -261,12 +261,12 @@ void prepare_floors(int steps[2], float &distanceOfmotor) {
   move_motor_start(LOW);
   delay(500);
 
-  while (steps[1] > 100 || steps[1] <= 0) {
+/**  while (steps[1] > 100 || steps[1] <= 0) {
     float distanceOfstart = laser_value(MEASURE);
     distanceOfmotor = distanceOfstart * cos(atan(1.6 / 16));
     control_stepper_motor(steps, distanceOfmotor);
     delay(500);
-  }
+  }*/
   if (distanceOfmotor >= 15.40) {
     control_logic_motor(steps[1], distanceOfmotor);
     client.publish(NoProducts_topic, "No products");

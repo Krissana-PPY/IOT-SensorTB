@@ -6,9 +6,9 @@
 #include <lwip/tcpip.h>
 
 // Enterprise WiFi credentials
-const char* ssid = "Your_Enterprise_SSID";
-const char* username = "Your_Username";
-const char* password = "Your_Password";
+const char* ssid = "TBV-WiFi";
+const char* username = "";
+const char* password = "";
 
 // Access Point credentials  
 const char* ap_ssid = "ESP32-Access-Point";

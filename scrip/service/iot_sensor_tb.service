@@ -1,16 +1,16 @@
 [Unit]
 Description=Start Mosquitto, Flask App, and open Chromium
-After=network.target graphical-session.target
+After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/tbl/IOT-SenserTB/scrip/start_services.sh
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/tbl/.Xauthority
+ExecStart=/home/user/IOT-SensorTB/scrip/start_services.sh
+# Environment=DISPLAY=:0
+# Environment=XAUTHORITY=/home/tbl/.Xauthority
 Restart=on-failure
 RemainAfterExit=yes
 User=tbl
-WorkingDirectory=/home/tbl/IOT-SenserTB
+WorkingDirectory=/home/user/IOT-SensorTB
 
 [Install]
 WantedBy=multi-user.target

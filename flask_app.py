@@ -15,19 +15,18 @@ angle_y = []  # List to store angles along the Y-axis
 sub_pallet = []  # List to store the number of pallets in each sub-row
 sub_row = 1  # Current sub-row number in a pallet row
 current_id = 0  # Identifier for the current pallet
-recheck_pages = 0  # Counter for rechecking pages
 
 last_row_id = None
 last_max_range_id = None
 last_max_range_value = None
 
-url = "http://"
+url = ""
 
 def CreateApp():
     """Create and configure the Flask application."""
     app = Flask(__name__, template_folder='www/')
     app.config['SECRET_KEY'] = 'secret_key'
-    
+
     return app
 
 app = CreateApp()
@@ -105,7 +104,7 @@ def CalculateAverageDistance():
         else:
             # Calculate the average
             avg = sum(valid_distances) / len(valid_distances)
-        
+
         return avg
     return 0
 
@@ -148,7 +147,7 @@ def GetFirstRowId(current_id):
     """Get the first ROW_ID and NumberOfPages from the REST API."""
     api_url = url + f"Location/{current_id}"
     try:
-        response = requests.get(api_url)
+        response = requests.get(api_url, verify=False)
         response.raise_for_status()
         data = response.json()
 
@@ -158,7 +157,7 @@ def GetFirstRowId(current_id):
     except Exception as e:
         logging.error(f"Error fetching ROW_ID and NumberOfPages from API: {e}")
         return None, None
-    
+
 def GetMaxRange(current_id):
     """Get the MAX_RANGE from the REST API, cache by id."""
     global last_max_range_id, last_max_range_value
@@ -166,7 +165,7 @@ def GetMaxRange(current_id):
         return last_max_range_value
     api_url = url + f"Location/{current_id}"
     try:
-        response = requests.get(api_url)
+        response = requests.get(api_url, verify=False)
         response.raise_for_status()
         data = response.json()
 
@@ -176,23 +175,6 @@ def GetMaxRange(current_id):
     except Exception as e:
         logging.error(f"Error fetching MAX_RANGE from API: {e}")
         return None
-
-def PostStockAndRowPallet(row_id):
-    """Send ROW_ID and current date as JSON via HTTP POST."""
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    api_url = url + "Stock"
-
-    payload = {
-        "rowId": row_id,
-        "pallet": 0,
-        "updateDate": current_date
-    }
-    try:
-        response = requests.post(api_url, json=payload)
-        response.raise_for_status()
-        logging.info(f"POST stock_and_row_pallet for ROW_ID: {row_id}.")
-    except Exception as e:
-        logging.error(f"Error POST stock_and_row_pallet: {e}")
 
 def PostEachPallet(row_id, sub_row_val, distance_val, angle_x_val, angle_y_val):
     """Send each pallet data as JSON via HTTP POST."""
@@ -208,7 +190,7 @@ def PostEachPallet(row_id, sub_row_val, distance_val, angle_x_val, angle_y_val):
         "updateDate": current_date
     }
     try:
-        response = requests.post(api_url, json=payload)
+        response = requests.post(api_url, json=payload, verify=False)
         response.raise_for_status()
         print(response)
         logging.info(f"POST each_pallet for ROW_ID: {row_id}, SUB_ROW: {sub_row_val}.")
@@ -229,7 +211,7 @@ def PostRowPallet(row_id, sub_row_val, sub_pallet_val):
         "updateDate": current_date
     }
     try:
-        response = requests.post(api_url, json=payload)
+        response = requests.post(api_url, json=payload, verify=False)
         response.raise_for_status()
         print(response)
         logging.info(f"POST ROW_PALLET for ROW_ID: {row_id}, SUB_ROW: {sub_row_val}.")
@@ -240,14 +222,14 @@ def PostStock(row_id, pallets_total):
     """Send STOCK update as JSON via HTTP POST."""
     current_date = datetime.now().strftime("%Y-%m-%d")
     api_url = url + "Stock"
-    
+
     payload = {
         "rowId": row_id,
         "pallet": pallets_total,
         "updateDate": current_date
     }
     try:
-        response = requests.post(api_url, json=payload)
+        response = requests.post(api_url, json=payload, verify=False)
         response.raise_for_status()
         print(response)
         logging.info(f"POST STOCK update for ROW_ID: {row_id}.")
@@ -257,14 +239,14 @@ def PostStock(row_id, pallets_total):
 def DeleteRow(row_id):
     """Send delete row command as JSON via HTTP POST."""
     current_date = datetime.now().strftime("%Y-%m-%d")
-    url = ""
+    api_url =  url + "RowDelete"
     payload = {
         "type": "delete_row",
         "row_id": row_id,
         "update_date": current_date
     }
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(api_url, json=payload, verify=False)
         response.raise_for_status()
         logging.info(f"POST delete row for ROW_ID: {row_id}.")
     except Exception as e:
@@ -276,12 +258,11 @@ def HandleConnect(client, userdata, flags, rc):
     """Handle MQTT connection event."""
     print("connect with result code " + str(rc))
     client.subscribe(topic)
-    
 
 @mqtt.on_message()
 def HandleMqttMessage(client, userdata, message):
     """Handle incoming MQTT messages."""
-    global sub_row, current_id, recheck_pages, last_row_id
+    global sub_row, current_id, last_row_id
     msg = message.payload.decode()
     print(message.topic + " " + str(msg))
     if current_id > 0:
@@ -296,8 +277,6 @@ def HandleMqttMessage(client, userdata, message):
         CollectSensorData(msg)
 
     elif message.topic == "finish":
-        row_id, page = GetFirstRowId(current_id)
-        socketio.emit('send_c_row', {'c_row_v': row_id})
 
         for i in range(len(distance)):
             CalDistacetrue(distance[i], angle_y[i])
@@ -322,7 +301,7 @@ def HandleMqttMessage(client, userdata, message):
         # Handle the case when there are no products
         print("No products detected")
         sub_pallet.append(0)
-        PostRowPallet(row_id, sub_row, sub_pallet[-1])  
+        PostRowPallet(row_id, sub_row, sub_pallet[-1])
 
         ClearLists(distance, angle_x, angle_y, distance_true)
         sub_row += 1
@@ -331,8 +310,6 @@ def HandleMqttMessage(client, userdata, message):
         row_id, page = GetFirstRowId(current_id)
         if row_id:
             socketio.emit('send_c_row', {'c_row_v': row_id})
-
-        recheck_pages += 1
 
     elif message.topic == "QR":
         if current_id == 0:
@@ -349,12 +326,14 @@ def HandleMqttMessage(client, userdata, message):
         if current_id <= 1:
             current_id = 1
         row_id, page = GetFirstRowId(current_id)
+        print(f"Going back to previous row: {row_id}")
         if row_id:
             socketio.emit('send_c_row', {'c_row_v': row_id})
         socketio.emit('set_zero', FormatAllZero(), namespace='/')
 
     elif message.topic == "T":
         row_id, page = GetFirstRowId(1)
+        socketio.emit('send_c_row', {'c_row_v': row_id})
         print(f"Resetting to first row: {row_id}")
 
 # SocketIO Handlers to communicate with the client
@@ -375,6 +354,10 @@ def Index():
     """Render the main HTML page."""
     return render_template("index.html")
 
+@app.route("/test_control_sensor.html")
+def TestControlSensor():
+    """Render the test control sensor HTML page."""
+    return render_template("test_control_sensor.html")
 @app.route('/index.html')
 def index_html():
     return render_template("index.html")
@@ -382,6 +365,20 @@ def index_html():
 @app.route('/service-worker.js')
 def service_worker():
     return send_from_directory('static', 'service-worker.js')
+
+@app.route('/send_command', methods=['POST'])
+def SendCommand():
+    """Handle sending commands via MQTT."""
+    data = request.get_json()
+    topic = data.get('topic')
+    if topic:
+        try:
+            mqtt.publish(topic, '')
+            return jsonify({'status': 'success'}), 200
+        except Exception as e:
+            logging.error(f"Error publishing topic {topic}: {e}")
+            return jsonify({'status': 'error', 'message': 'Failed to publish topic'}), 500
+    return jsonify({'status': 'error', 'message': 'Invalid topic'}), 400
 
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Sensor</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 2.2em;
+            margin-bottom: 6vh;
+            font-weight: bold;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10vh;
+            gap: 25px;
+        }
+        .button {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 0.8em 1.2em;
+            font-size: 1.1em;
+            border-radius: 1.5em;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            flex: 1;
+            width: 140px;
+            height: 60px;
+        }
+        
+        .button:hover {
+            background-color: white;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Control Sensor</h1>
+        <div class="buttons">
+            <button class="button" onclick="sendCommand('2Floors')">2Floors</button>
+            <button class="button" onclick="sendCommand('3Floors')">3Floors</button>
+            <button class="button" onclick="sendCommand('Test')">Test connection</button>
+        </div>
+        <div class="buttons">
+            <button class="button" onclick="sendCommand('forward')">Forward</button>
+            <button class="button" onclick="sendCommand('back')">Back ROW</button>
+            <button class="button" onclick="sendCommand('QR')">Next Row</button>
+        </div>
+        <div class="buttons">
+            <button class="button" onclick="window.location.href='/index.html'">Back to Home</button>
+    </div>
+
+    <script>
+        function sendCommand(command) {
+            let topic;
+            switch(command) {
+                case '2Floors':
+                    topic = '2F';
+                    break;
+                case '3Floors':
+                    topic = '3F';
+                    break;
+                case 'forward':
+                    topic = 'F';
+                    break;
+                case 'back':
+                    topic = 'B';
+                    break;
+                case 'QR':
+                    topic = 'QR';
+                    break;
+                case 'Test':
+                    topic = 'T';
+                    break;
+                default:
+                    console.error('Unknown command:', command);
+                    return;
+            }
+            fetch('/send_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ topic: topic })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    // alert('Command sent: ' + topic);
+                    window.location.href = '/index.html';
+                } else {
+                    alert('Failed to send command: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Error sending command: ' + error);
+            });
+        }
+    </script>
+</body>
+</html>
